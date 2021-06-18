@@ -1,12 +1,24 @@
 # FastViFi
-A software to detect viral infection and integration sites for different viruses. FastViFi relies on ViFi and Kraken2 softwares originally available on https://github.com/namphuon/ViFi and https://github.com/DerrickWood/kraken2. Please use the forked repositories referenced in the installation section which are modified to integrate into FastViFi pipeline.
+A software to detect viral infection and integration sites for different viruses. FastViFi relies on ViFi and Kraken2 tools. Please use the forked repositories referenced in the installation section which are modified to integrate into FastViFi pipeline.
 
 Manuscript for this software is in preparation.
 
 # Installation
-Follow the installation guides on https://github.com/sara-javadzadeh/ViFi and https://github.com/sara-javadzadeh/kraken2.
-To get the reference viral dataset for ViFi, please contact the author by sending an email to (saraj [at] eng [ dot ] ucsd [ dot ] edu).
-Once Both tools are installed, build Kraken databases based on the **sample-level** and **read-level** configurations on FastViFi, i.e. one Kraken database including viral and human references with k=25 and two kraken datasets including only viral references with k=18 and k=22. The name of the Kraken databases should follow the format `Kraken2StandardDB_k_<KMER_LEN>_<VIRUS>_hg`, replacing `<KMER_LEN>` by the respective k value mentioned above and `<VIRUS>` with the target virus name among the list: (hpv, hbv, hcv, ebv).
+Follow the installation guides on https://github.com/sara-javadzadeh/ViFi and https://github.com/sara-javadzadeh/kraken2. Install the tools in any directory. To run FastViFi, the path to ViFi and Kraken should be passed through flags.
+
+Once Both tools are installed, build Kraken databases based on the **sample-level** and **read-level** configurations on FastViFi, namely:
+- One Kraken database including viral and human references with k=25 and
+- Two kraken datasets including only viral references with k=18 and k=22
+
+To build the custom databases, use the script `build_custom_kraken_database.sh` on the GitHub repository https://github.com/sara-javadzadeh/kraken2. The script automatically creates all the three databases for a given virus name and corresponding reference file. Before proceeding, check the following in the Kraken databases:
+
+- The name of the Kraken databases should follow the format:
+  - `Kraken2StandardDB_k_<KMER_LEN>_<VIRUS>_hg` for the first kraken filter including human reference and
+  - `Kraken2StandardDB_k_<KMER_LEN>_<VIRUS>` for the next two kraken filters with the viral references only.
+  -  By replacing `<KMER_LEN>` by the respective k value mentioned above and `<VIRUS>` with the target virus name among the list: (hpv, hbv, hcv, ebv).
+- In each database file, check for presence of the following three index files: hash.k2d, opts.k2d and taxo.k2d
+You can further inspect each database with `kraken2-inspect` script in Kraken2 directory by running `./kraken2-inspect --db <database name>`
+
 
 # Running
 FastViFi can be used on WGS or RNA-seq files. The recommended process for running FastViFi is to run **sample-level** FastViFi on all samples (lower runtime but less sensitive) followed by running **read-level** FastViFi on samples where viral reads were detected.
