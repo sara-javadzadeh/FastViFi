@@ -4,12 +4,20 @@ import sys
 import time
 from collections import defaultdict
 
-def get_human_chr_list():
-    human_chr_list = ["chr" + str(i) for i in range(1, 23)]
-    human_chr_list.extend(["chrX", "chrY", "chrM"])
+def get_human_chr_list(filename):
     human_chr_names = {}
-    for chrom in human_chr_list:
-        human_chr_names[chrom] = True
+    chrnames_file = open(filename, "r")
+    print("reading chr names")
+    for line in chrnames_file.readlines():
+        print("line: {}".format(line))
+        human_chr_names[line.strip()] = True
+    chrnames_file.close()
+    # deprecated chr names
+    #    human_chr_list = ["chr" + str(i) for i in range(1, 23)]
+    #    human_chr_list.extend(["chrX", "chrY", "chrM"])
+    #    for chrom in human_chr_list:
+    #        human_chr_names[chrom] = True
+    print("human_chr_names: {}".format(human_chr_names))
     return human_chr_names
 
 def is_read_or_pair_unmapped(read):
@@ -83,8 +91,8 @@ def read_input_file_flag_names(input_bamfile):
     print("time of reading: {}".format(time.time() - reading_start_time))
     return reads_passing_filter
 
-def read_input_file(input_bamfile):
-    human_chr_names = get_human_chr_list()
+def read_input_file(input_bamfile, human_chr_names_filename):
+    human_chr_names = get_human_chr_list(human_chr_names_filename)
     #print("human_chr_names: ", human_chr_names)
     bamfile_references = input_bamfile.references
     #print("bamfile_references", bamfile_references)
@@ -116,6 +124,10 @@ def write_selected_reads(reads_passing_filter):
     for query_name, read_mates in reads_passing_filter.items():
         #if i % 1000000 == 0:
         #    print("Processing potentially viral read # {}, time spent on writing ".format(i, time.time() - writing_start_time))
+        if len(read_mates) == 1:
+            print("Error: read mate is missing for the following read. The present mate is skipped.")
+            print(read_mates[0])
+            continue
         write_sequence(read_mates[0], output_fq_file_1, output_fq_file_2)
         write_sequence(read_mates[1], output_fq_file_1, output_fq_file_2)
         if not ((read_mates[0].is_read1 and read_mates[1].is_read2) or \
@@ -125,8 +137,8 @@ def write_selected_reads(reads_passing_filter):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: {} <path to input bam file> <path to output directory> <prefix>\n".format(sys.argv[0]) +
+    if len(sys.argv) < 5:
+        print("Usage: {} <path to input bam file> <path to output directory> <filename with human ref names in BAM file> <prefix>\n".format(sys.argv[0]) +
               "Two Fastq files for paired end reads are created.\n" +
               "Note: human chromosomes reference names are assumed to be in the format "+
               "of chr1-chr22, chrX, chrY, chrM. If that is not the case for the BAM file, " +
@@ -135,7 +147,8 @@ if __name__ == "__main__":
         exit(1)
     input_filename = sys.argv[1]
     output_dir = sys.argv[2]
-    prefix = sys.argv[3]
+    human_chr_names_filename = sys.argv[3]
+    prefix = sys.argv[4]
     output_fq_filename_1 = os.path.join(output_dir, prefix + "_1.fq")
     output_fq_filename_2 = os.path.join(output_dir, prefix + "_2.fq")
     print("Filtering reads from {}".format(input_filename))
@@ -150,5 +163,5 @@ if __name__ == "__main__":
     output_fq_file_1 = open(output_fq_filename_1, "w")
     output_fq_file_2 = open(output_fq_filename_2, "w")
 
-    reads_passing_filter = read_input_file(input_bamfile)
+    reads_passing_filter = read_input_file(input_bamfile, human_chr_names_filename)
     write_selected_reads(reads_passing_filter)
