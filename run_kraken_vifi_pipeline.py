@@ -106,6 +106,9 @@ def parse_input_args():
         help='Path to the ViFi python run_vifi.py script.')
     parser.add_argument('--vifi-human-ref-dir', required=False,
         help='Path to the directory including ViFi human reference.')
+    parser.add_argument('--human-chr-list', required=True,
+        help='Path to the file containing all the human chromosome names used to align the input bam file.\n' +
+             'Should be exactly the same name as headers in the input bam file, one reference name per line.')
     #parser.add_argument('--vifi-viral-ref-dir', required=False,
     #    help='Path to the directory including ViFi viral reference.')
 
@@ -393,14 +396,15 @@ def run_pipeline(args):
 
     log_time(log_file_pipeline)
     start_timer = time.time()
+    human_chr_list = args.human_chr_list
 
     # Filter aligned reads and discard reads mapping to human reference early on.
     if not args.skip_bwa_filter:
         if is_aligned_reads(args.input_file):
             log_file_pipeline.write("Filtering reads from input file {}".format(args.input_file) + os.linesep)
 
-            shell_output = subprocess.check_output("/usr/bin/time -v python filter_reads_bwa_efficient.py {} {} {} &>> output".format(
-                args.input_file, args.output_dir, bwa_filtered_filename_prefix), shell=True)
+            shell_output = subprocess.check_output("/usr/bin/time -v python filter_reads_bwa_efficient.py {} {} {} {} &>> output".format(
+                args.input_file, args.output_dir, human_chr_list, bwa_filtered_filename_prefix), shell=True)
             log_file_pipeline_shell.write(shell_output)
 
             num_lines = sum([1 for line in open(bwa_filtered_fq_filename_1)])
