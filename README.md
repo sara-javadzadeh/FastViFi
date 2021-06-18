@@ -21,15 +21,16 @@ You can further inspect each database with `kraken2-inspect` script in Kraken2 d
 
 
 # Running
-FastViFi can be used on WGS or RNA-seq files. The recommended process for running FastViFi is to run **sample-level** FastViFi on all samples (lower runtime but less sensitive) followed by running **read-level** FastViFi on samples where viral reads were detected.
+FastViFi can be used on WGS or RNA-seq files. The recommended process for running FastViFi is to run **sample-level** FastViFi on all samples (lower runtime but less sensitive) followed by running **read-level** FastViFi on samples where viral reads were detected. Use the following command to run FastViFi:
 
 ```
 python run_kraken_vifi_pipeline.py --output-dir $OUTPUT_DIR --input-file $INPUT_BAM --level $FASTVIFI_LEVEL --kraken-path $KRAKEN_PATH --vifi-path $VIFI_PATH --human-chr-list $human_chr_list.txt --virus $VIRUSES
 ```
-`OUTPUT_DIR` is the directory to store all the output files.
-`$INPUT_BAM` is the path to the input BAM file. FastViFi also works on a pair of FASTQ files for unaligned paired-end reads. See the manual or contact the author for more information.
-`$FASTVIFI_LEVEL` sets the configurations based on the level of sensitivity in FastViFi. Set the `--level` to `sample-level-validation-intermediate` for **sample-level** FastViFi and `sensitive-level-validation-intermediate` for **read-level** FastViFi for each FastViFi call. It is possible to add customized configuration values. For more information, please contact the author.
-`$KRAKEN_PATH` and `$VIFI_PATH` are the path to the Kraken and ViFi tool (should be installed before running FastViFi).
+- `OUTPUT_DIR` is the directory to store all the output files.
+- `$INPUT_BAM` is the path to the input BAM file. FastViFi also works on a pair of FASTQ files for unaligned paired-end reads. See the manual or contact the author for more information.
+- `$FASTVIFI_LEVEL` sets the configurations based on the level of sensitivity in FastViFi. Set the `--level` to `sample-level-validation-intermediate` for **sample-level** FastViFi and `sensitive-level-validation-intermediate` for **read-level** FastViFi for each FastViFi call. It is possible to add customized configuration values. For more information, please contact the author.
+- `$KRAKEN_PATH` is the path to the Kraken2 executable file named kraken2 within the Kraken2 directory. See `Installation` section for installing Kraken2 and setting up customized databases prior to running FastViFi.
+- `$VIFI_PATH` is the path to ViFi main python script named `run_vifi.py`. See `Installation` setion for installing ViFi prior to running FastViFi.
 
 When input is in form of reads aligned to the human reference, use `--human-chr-list human_chr_list.txt` to indicate the list of reference names in the `human_chr_file.txt` file (one reference per line). The list of reference names can be extracted by calling `samtools view -H $INPUT_BAM` where `$INPUT_BAM` is the input BAM file.
 
