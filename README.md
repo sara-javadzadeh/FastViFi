@@ -10,9 +10,14 @@ Once Both tools are installed, build Kraken databases based on the **sample-leve
 - One Kraken database including viral and human references with k=25 and
 - Two kraken datasets including only viral references with k=18 and k=22
 
+Kraken databses for **sample-level** FastViFi for HPV are available on https://drive.google.com/file/d/1QYn5lDWjvhtIWCrwmzDc_1fy8ANrXWz1/view?usp=sharing. After downloading the compressed file, run the following command to unpack:
+`tar -xzvf kraken_datasets.tar.gz`
+
+Then, move both datasets to the path where Kraken is installed.
+
 To build the custom databases, use the script `build_custom_kraken_database.sh` on the GitHub repository https://github.com/sara-javadzadeh/kraken2. The script automatically creates all the three databases for a given virus name and corresponding reference file. We recommend using the same set of viruses for Kraken2 databases and ViFi to simplify the analysis. The viral reference for each virus can be obtained from the ViFi repository (https://github.com/sara-javadzadeh/ViFi). After cloning the repository and un-compressing the file `viral_data.tar.gz`, the viral reference for each of the desired viruses can be found on `viral_data/<VIRUS>/<VIRUS>.unaligned.fas*`  where `<VIRUS>` can be either of the following: hpv, hbv, hcv or ebv.
 
-Before proceeding, check the following in the Kraken databases:
+Before proceeding with the custom Kraken dataset, check the following in the Kraken databases:
 
 - The name of the Kraken databases should follow the format:
   - `Kraken2StandardDB_k_<KMER_LEN>_<VIRUS>_hg` for the first kraken filter including human reference and
