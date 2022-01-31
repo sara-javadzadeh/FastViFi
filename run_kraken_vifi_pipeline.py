@@ -340,7 +340,6 @@ def write_viral_reads_report(args, virus, prefix, log_file_pipeline, vifi_input_
     else:
         # Extract the viral reads
         viral_aligned_file = pysam.AlignmentFile(os.path.join(args.output_dir, "{}.viral.bam".format(prefix)), 'rb')
-        fixed_trans_viral_file = pysam.AlignmentFile(os.path.join(args.output_dir, "{}.fixed.trans.bam".format(prefix)), 'rb')
         trans_viral_file = pysam.AlignmentFile(os.path.join(args.output_dir, "{}.trans.bam".format(prefix)), 'rb')
         fixed_trans_viral_read_ids = []
         viral_aligned_read_ids = []
@@ -349,8 +348,11 @@ def write_viral_reads_report(args, virus, prefix, log_file_pipeline, vifi_input_
             viral_aligned_read_ids.append(read.query_name)
         for read in trans_viral_file.fetch(until_eof=True):
             trans_viral_read_ids.append(read.query_name)
-        for read in fixed_trans_viral_file.fetch(until_eof=True):
-            fixed_trans_viral_read_ids.append(read.query_name)
+        fixed_trans_filename = os.path.join(args.output_dir, "{}.fixed.trans.bam".format(prefix))
+        if os.path.exists(fixed_trans_filename):
+            fixed_trans_viral_file = pysam.AlignmentFile(fixed_trans_filename, 'rb')
+            for read in fixed_trans_viral_file.fetch(until_eof=True):
+                fixed_trans_viral_read_ids.append(read.query_name)
 
         all_viral_read_ids = list(set(trans_viral_read_ids + viral_aligned_read_ids + fixed_trans_viral_read_ids))
 
