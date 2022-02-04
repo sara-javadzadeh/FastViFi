@@ -67,6 +67,6 @@ When input is in form of reads aligned to the human reference, use `--human-chr-
 Indicate the target viruses listed after the flag `--virus`. E.g.: `--virus hbv hcv`. Currently 4 viruses are supported: hpv, hbv, hcv and ebv.To create references for other viruses, use the manual on ViFi https://github.com/sara-javadzadeh/ViFi.
 
 
-To speedup the runtime, use the flag `--keep-intermediate-files` when running sample-level FastViFi on a sample. Once the sample-level FastViFi is completed, run FastViFi on read-level with the flag `--skip-bwa-filter` on the same sample.
+To speedup the runtime, use the flag `--keep-intermediate-files` when running sample-level FastViFi on a sample. Once the sample-level FastViFi is completed, run FastViFi on read-level with the flag `--skip-bwa-filter` on the same sample. Note that the bwa-filter (when `--skip-bwa-filter` is not set) is in fact alignment based filter. Rather than running BWA, it depends on alignment information on the input BAM file.
 
 FastViFi will remove all the intermediate and output files if no viral reads were detected. To avoid removing all the files, use the flag `--keep-all-virus-files` to manually inspect the files and troubleshoot in case of an error.

@@ -7,18 +7,12 @@ import subprocess
 import time
 import pysam
 
-virus_detection_mode = ('read-level', 'sample-level', 'test-dataset',
-                        'sample-level-sensitive',
-                        'sample-level-validation-intermediate',
+virus_detection_mode = ('sample-level-validation-intermediate',
                         'sensitive-level-validation-intermediate')
 virus_types = ("all", "hpv", "hbv", "hcv", "ebv", "hpv_655", "hbv_2012")
 default_config = {
-    virus_detection_mode[0]: {'k1': 25, 'k2': 18, 'u1': 0.8, 'u2': 0.8, 't1': 0.4},
-    virus_detection_mode[1]: {'k1': 20, 'k2': 22, 'u1': 0.2, 'u2': 0.8, 't1': 0.4},
-    virus_detection_mode[2]: {'k1': 25, 'k2': 18, 'u1': 0.6, 'u2': 0.8, 't1': 0.4},
-    virus_detection_mode[3]: {'k1': 20, 'k2': 18, 'u1': 0.2, 'u2': 0.9, 't1': 0.4},
-    virus_detection_mode[4]: {'k1': 25, 'k2': 22, 'u1': 0.8, 'u2': 0.9, 't1': 0.4},
-    virus_detection_mode[5]: {'k1': 25, 'k2': 18, 'u1': 0.6, 'u2': 0.8, 't1': 0.8}}
+    virus_detection_mode[0]: {'k1': 25, 'k2': 22, 'u1': 0.8, 'u2': 0.9, 't1': 0.4},
+    virus_detection_mode[1]: {'k1': 25, 'k2': 18, 'u1': 0.6, 'u2': 0.8, 't1': 0.8}}
 
 def log_time(log_file):
     formatted_time = subprocess.check_output('date -u "+DATE: %Y-%m-%d TIME: %H:%M:%S"', shell=True)
