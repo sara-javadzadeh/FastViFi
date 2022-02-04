@@ -36,6 +36,19 @@ Before proceeding with the custom Kraken dataset, check the following in the Kra
 - In each database file, check for presence of the following three index files: hash.k2d, opts.k2d and taxo.k2d
 You can further inspect each database with `kraken2-inspect` script in Kraken2 directory by running `./kraken2-inspect --db <database name>`
 
+# Toy Example
+To test FastViFi against a toy example, change the directory to `test` and run `bash ./test_fastvifi.sh <path to the kraken2 directory> <path to ViFi directory>`.
+
+Input files for the toy sample inlude:
+- 6 paired end reads originated from HPV16,
+- 4 Paired end reads originated from the human genome, and
+- 4 Paired end reads where one mate is originated from the human genome and the other is originated from HPV185 (not in the viral references).
+The origin of each read in the toy example is indicated in the read name.
+
+The expected behaviour for FastViFi is to filter out the human originated reads, report reads originated from HPV16 as viral and report a hybrid human-viral junction with the HPV185 and human genome reads. To check the output, change the directory to `fastvifi_output_files`.
+- The file `output_hpv.viral.bam` stores all the reads where both mates were mapped to the reference viral genomes. If Samtools is installed, Run `samtools view output_hpv.viral.bam` to see 12 entries (6 paired end reads) mapped to the viral reference.
+- The file `output_hpv.fixed.trans.bam` stores the reads where one mate is mapped to the human genome and the other is mapped to viral genomes. Run `samtools view output_hpv.fixed.trans.bam` and look for 8 entries (4 paired end reads) that represent the presence of hybrid human-viral DNA.
+- The file `output_hpv.clusters.txt` stores all the hybrid human-viral DNA/RNA junctions clusters. There should be a single cluster with the 4 paired end reads.
 
 # Running
 FastViFi can be used on WGS or RNA-seq files. The recommended process for running FastViFi is to run **sample-level** FastViFi on all samples (lower runtime but less sensitive) followed by running **read-level** FastViFi on samples where viral reads were detected. Use the following command to run FastViFi:
