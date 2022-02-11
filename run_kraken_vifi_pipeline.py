@@ -65,7 +65,7 @@ def check_kraken_db(db_path, log_file_pipeline):
         error_message ="Error: Kraken database {} not created. ".format(db_path) +\
               "Create the database with corresponding k-mer length " +\
               "and indices."
-        log_error_and_exit(message, log_file_pipeline)
+        log_error_and_exit(error_message, log_file_pipeline)
 
 def remove_if_exists(filenames):
     for filename in filenames:
