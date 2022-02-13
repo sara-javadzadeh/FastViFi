@@ -96,6 +96,8 @@ def parse_input_args():
         description="Rapidly detect viral reads from DNA WGS data.")
     parser.add_argument('--kraken-path', required=True,
         help='Path to the Kraken tool.')
+    parser.add_argument('--kraken-db-path', required=False,
+        help='Path to the directory with the Kraken databases.')
     parser.add_argument('--vifi-path', required=True,
         help='Path to the ViFi python run_vifi.py script.')
     parser.add_argument('--vifi-human-ref-dir', required=False,
@@ -186,9 +188,13 @@ def parse_input_args():
 def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
                     bwa_filtered_fq_filename_1, bwa_filtered_fq_filename_2):
     # Defining file paths
-    kraken_db_path = os.path.dirname(args.kraken_path)
+    if args.kraken_db_path is not None:
+        kraken_db_path = args.kraken_db_path
+    else:
+        kraken_db_path = os.path.dirname(args.kraken_path)
     kraken_db_1 = os.path.join(kraken_db_path, "Kraken2StandardDB_k_{}_{}_hg".format(args.k1, virus))
     kraken_db_2 = os.path.join(kraken_db_path, "Kraken2StandardDB_k_{}_{}".format(args.k2, virus))
+    print(kraken_db_1)
     first_level_kraken_filtered_code = os.path.join(args.output_dir, "reads_passing_kraken_first_level_for_virus_{}#.fq".format(virus))
     first_level_kraken_filtered_fq_1 = os.path.join(args.output_dir, "reads_passing_kraken_first_level_for_virus_{}_1.fq".format(virus))
     first_level_kraken_filtered_fq_2 = os.path.join(args.output_dir, "reads_passing_kraken_first_level_for_virus_{}_2.fq".format(virus))
