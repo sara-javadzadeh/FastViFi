@@ -1,13 +1,15 @@
 #!/bin/bash
 
-if [ $# -ne 2 ]; then
-    echo "Usage: bash $0 <path to kraken directory> <path to vifi directory>"
+if [ $# -ne 3 ]; then
+    echo "Usage: bash $0 <path to kraken directory> <--kraken-db-path> <path to vifi directory>"
+    exit 1
 fi
 
 kraken_path=$1
 kraken_bin_path="${kraken_path}/kraken2"
-vifi_path=$2
-vifi_bin_path="${vifi_path}/scripts/run_vifi.py"
+kraken_db_path=$2
+vifi_path=$3
+vifi_script_path="${vifi_path}/scripts/run_vifi.py"
 
 input_file_1="$(pwd)/test_reads_1.fq"
 input_file_2="$(pwd)/test_reads_2.fq"
@@ -25,5 +27,5 @@ fi
 
 human_chr_list="$(pwd)/human_chr_list.txt"
 
-/usr/bin/time -v python ../run_kraken_vifi_pipeline.py --output-dir $output_dir --input-file $input_file_1 --input-file-2 $input_file_2 --level sample-level-validation-intermediate --kraken-path $kraken_bin_path --vifi-path $vifi_bin_path --virus hpv --human-chr-list $human_chr_list --skip-bwa-filter --keep-intermediate-files &>> $output_file
+/usr/bin/time -v python ../run_kraken_vifi_pipeline.py --output-dir $output_dir --input-file $input_file_1 --input-file-2 $input_file_2 --level sample-level-validation-intermediate --kraken-path $kraken_bin_path --kraken-db-path $kraken_db_path --vifi-path $vifi_script_path --virus hpv --human-chr-list $human_chr_list --skip-bwa-filter --keep-intermediate-files &>> $output_file
 

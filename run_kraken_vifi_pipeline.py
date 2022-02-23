@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+import stat
 from datetime import timedelta
 from shutil import copyfile
 import subprocess
@@ -16,7 +17,7 @@ default_config = {
 
 def log_time(log_file):
     formatted_time = subprocess.check_output('date -u "+DATE: %Y-%m-%d TIME: %H:%M:%S"', shell=True)
-    log_file.write(formatted_time.decode(sys.stdout.encoding) + os.linesep)
+    log_file.write(formatted_time.decode('utf-8') + os.linesep)
 
 def get_formatted_time(start_time):
     return str(timedelta(seconds=time.time() - start_time))
@@ -91,22 +92,29 @@ def remove_kraken_intermediate_files_if_exist(keep_intermediate_files_flag,
         remove_if_exists([first_level_kraken_output, final_level_kraken_output,
                          first_level_kraken_report, final_level_kraken_report])
 
-def parse_input_args():
+def parse_input_args(docker_run=False):
+    # Some arguments are required for a regular run, but not required when running on Docker.
+    # Note that the same function is used to parse the arguments in both cases.
+    # required=docker_run means that if running on Docker mode, the argument is required, otherwise not required.
+    # required= not docker_run means that if running on Docker mode, the argument is not required, otherwise is required.
+    # For example, kraken_path is required on a regular to run kraken. But is not required on the Docker run because
+    # kraken is installed in the prebuilt image.
     parser = argparse.ArgumentParser(
         description="Rapidly detect viral reads from DNA WGS data.")
-    parser.add_argument('--kraken-path', required=True,
+    parser.add_argument('--kraken-path', required= not docker_run,
         help='Path to the Kraken tool.')
-    parser.add_argument('--kraken-db-path', required=False,
+    parser.add_argument('--kraken-db-path', required=docker_run,
         help='Path to the directory with the Kraken databases.')
-    parser.add_argument('--vifi-path', required=True,
+    parser.add_argument('--vifi-path', required= not docker_run,
         help='Path to the ViFi python run_vifi.py script.')
-    parser.add_argument('--vifi-human-ref-dir', required=False,
-        help='Path to the directory including ViFi human reference.')
-    parser.add_argument('--human-chr-list', required=True,
+    parser.add_argument('--vifi-human-ref-dir', required=docker_run,
+        help='Path to the directory including ViFi human reference. It is the <data_repo> directory when downloaded based on instructions on the README.md file.')
+    parser.add_argument('--human-chr-list', required= not docker_run,
         help='Path to the file containing all the human chromosome names used to align the input bam file.\n' +
              'Should be exactly the same name as headers in the input bam file, one reference name per line.')
-    #parser.add_argument('--vifi-viral-ref-dir', required=False,
-    #    help='Path to the directory including ViFi viral reference.')
+    parser.add_argument('--vifi-viral-ref-dir', required=docker_run,
+        help='Path to the directory including ViFi viral reference. \n' +
+             'The pre-built viral reference files for HPV, HBV, HCV and EBV are available at the GitHub repository https://github.com/sara-javadzadeh/ViFi.')
 
     parser.add_argument('--output-dir', required=True,
         help='The path for the intermediate and output files')
@@ -120,6 +128,10 @@ def parse_input_args():
         help='Path to one of the FASTQ files storing the paired end reads. ' +
              'The FASTQ file containing corresponding read mates should be provided using --input-file argument. ' +
              'Both FASTQ files are required in case FASTQ is the chosen input file.')
+
+    parser.add_argument('--docker', action="store_true", default=False,
+        help='Run FastViFi in Docker mode [False]. This argument is intended for internal use. \n' +
+             'To run containerized FastViFi, run run_kraken_vifi_docker.py.')
 
     parser.add_argument('--virus', default=None, choices=virus_types, nargs="+",
         help='The virus name used for this experiment [all]'.format(virus_types))
@@ -194,7 +206,6 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
         kraken_db_path = os.path.dirname(args.kraken_path)
     kraken_db_1 = os.path.join(kraken_db_path, "Kraken2StandardDB_k_{}_{}_hg".format(args.k1, virus))
     kraken_db_2 = os.path.join(kraken_db_path, "Kraken2StandardDB_k_{}_{}".format(args.k2, virus))
-    print(kraken_db_1)
     first_level_kraken_filtered_code = os.path.join(args.output_dir, "reads_passing_kraken_first_level_for_virus_{}#.fq".format(virus))
     first_level_kraken_filtered_fq_1 = os.path.join(args.output_dir, "reads_passing_kraken_first_level_for_virus_{}_1.fq".format(virus))
     first_level_kraken_filtered_fq_2 = os.path.join(args.output_dir, "reads_passing_kraken_first_level_for_virus_{}_2.fq".format(virus))
@@ -277,7 +288,12 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
 
     # ViFi step
     vifi_output_prefix = "output_" + str(virus)
-    command = "/usr/bin/time -v python {} --docker ".format(args.vifi_path) +\
+    vifi_docker_arg = " --docker "
+    if args.docker:
+        vifi_docker_arg = ""
+
+    command = "/usr/bin/time -v python {} ".format(args.vifi_path) +\
+              "{}".format(vifi_docker_arg) +\
               "-f {} -r {} ".format(vifi_input_fq_1, vifi_input_fq_2) +\
               "-o {} --virus {} ".format(args.output_dir, virus) +\
               "-c {} ".format(args.threads) +\
@@ -443,7 +459,8 @@ def run_pipeline(args):
                         bwa_filtered_fq_filename_2=bwa_filtered_fq_filename_2)
     if not args.keep_intermediate_files:
         remove_if_exists([bwa_filtered_fq_filename_1, bwa_filtered_fq_filename_2])
-
+    if args.docker:
+        os.system("chmod 777 -R {}".format(os.path.join(args.output_dir, "tmp")))
 
 if __name__ == "__main__":
     args = parse_input_args()
