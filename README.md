@@ -97,3 +97,9 @@ Before proceeding with the custom Kraken dataset, check the following in the Kra
   -  By replacing `<KMER_LEN>` by the respective k value mentioned above and `<VIRUS>` with the target virus name among the list: (hpv, hbv, hcv, ebv).
 - In each dataset directory, check for presence of the following three index files: hash.k2d, opts.k2d and taxo.k2d
 You can further inspect each dataset with `kraken2-inspect` script in Kraken2 directory by running `./kraken2-inspect --db <dataset name>`
+
+## Publication
+
+Javadzadeh, Sara, et al. "FastViFi: Fast and accurate detection of (Hybrid) Viral DNA and RNA." NAR genomics and bioinformatics 4.2 (2022): lqac032.
+
+https://academic.oup.com/nargab/article/4/2/lqac032/6574445
