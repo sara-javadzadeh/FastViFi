@@ -152,6 +152,10 @@ def parse_input_args(docker_run=False):
     parser.add_argument('--skip-vifi', action="store_true", default=False,
         help='Skip the ViFi call. Report the results of Kraken filtering.\n' +
              'This flag results in a high number of false positive and non-viral reads[False].')
+    parser.add_argument('--skip-vifi-hmms', action="store_true", default=False,
+        help='Do not use HMMs when calling ViFi. This does not disable ViFi, only disables the call to HMM alignment.\n' +
+             'This flag is useful when there are not many viral strains available,\n' +
+             'therefore, the HMMs are not likely to capture conserved or highly variant regions in the viral genome[False].')
 
     parser.add_argument('--level', '-l', default=virus_detection_mode[0], choices=virus_detection_mode,
         help='The level of virus detection [{}]'.format(virus_detection_mode[0]))
@@ -304,6 +308,8 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
             command += ' --hg_data_dir {} '.format(args.vifi_human_ref_dir)
         if args.level == 'sensitive-level-validation-intermediate':
             command += " --sensitive"
+        if args.skip_vifi_hmms:
+            command += "  --disable_hmms"
         #if args.vifi_viral_ref_dir is not None:
         #    command += ' --viral_reference_dir {} '.format(args.vifi_viral_ref_dir)
         if args.verbose:

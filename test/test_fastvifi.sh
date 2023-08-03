@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -ne 3 ]; then
-    echo "Usage: bash $0 <path to kraken directory> <--kraken-db-path> <path to vifi directory>"
+    echo "Usage: bash $0 <path to kraken directory> <path to where kraken databases are stored> <path to vifi directory>"
     exit 1
 fi
 
