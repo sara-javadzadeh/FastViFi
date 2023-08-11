@@ -8,8 +8,8 @@ import subprocess
 import time
 import pysam
 
-virus_detection_mode = ('sample-level-validation-intermediate',
-                        'sensitive-level-validation-intermediate')
+virus_detection_mode = ('sample-level',
+                        'sensitive-level')
 virus_types = ("all", "hpv", "hbv", "hcv", "ebv", "hpv_655", "hbv_2012")
 default_config = {
     virus_detection_mode[0]: {'k1': 25, 'k2': 22, 'u1': 0.8, 'u2': 0.9, 't1': 0.4},
@@ -100,102 +100,119 @@ def parse_input_args(docker_run=False):
     # For example, kraken_path is required on a regular to run kraken. But is not required on the Docker run because
     # kraken is installed in the prebuilt image.
     parser = argparse.ArgumentParser(
-        description="Rapidly detect viral reads from DNA WGS data.")
-    parser.add_argument('--kraken-path', required= not docker_run,
+        description="Rapidly detect viral reads from genomic data.")
+
+    dependent_tools_args = parser.add_argument_group('Arguments related to the reference files and dependent tools')
+    dependent_tools_args.add_argument('--kraken-path', required= not docker_run,
         help='Path to the Kraken tool.')
-    parser.add_argument('--kraken-db-path', required=docker_run,
+    dependent_tools_args.add_argument('--kraken-db-path', required=docker_run,
         help='Path to the directory with the Kraken databases.')
-    parser.add_argument('--vifi-path', required= not docker_run,
+    dependent_tools_args.add_argument('--vifi-path', required= not docker_run,
         help='Path to the ViFi python run_vifi.py script.')
-    parser.add_argument('--vifi-human-ref-dir', required=docker_run,
+    dependent_tools_args.add_argument('--vifi-human-ref-dir', required=docker_run,
         help='Path to the directory including ViFi human reference. It is the <data_repo> directory when downloaded based on instructions on the README.md file.')
-    parser.add_argument('--human-chr-list', required= not docker_run,
+    dependent_tools_args.add_argument('--human-chr-list', required= not docker_run,
         help='Path to the file containing all the human chromosome names used to align the input bam file.\n' +
-             'Should be exactly the same name as headers in the input bam file, one reference name per line.')
-    parser.add_argument('--vifi-viral-ref-dir', required=docker_run,
+             'Should be exactly the same name as headers in the input bam file, one reference name per line.\n' +
+             'For an example, see test/human_chr_list.txt')
+    dependent_tools_args.add_argument('--vifi-viral-ref-dir', required=docker_run,
         help='Path to the directory including ViFi viral reference. \n' +
              'The pre-built viral reference files for HPV, HBV, HCV and EBV are available at the GitHub repository https://github.com/sara-javadzadeh/ViFi.')
 
-    parser.add_argument('--output-dir', required=True,
+
+    input_output_args = parser.add_argument_group('Arguments related to input and output')
+    input_output_args.add_argument('--output-dir', required=True,
         help='The path for the intermediate and output files')
-    parser.add_argument("--input-file", required=True,
+    input_output_args.add_argument("--input-file", required=True,
         help='Path to the input file.\n' +
              'Input file can be either of the following:\n' +
              '- A BAM/SAM file storing the aligned reads to human reference (and possibly the target viral strains)\n' +
              '- A pair of FASTQ files storing the paired end reads with the corresponding reads appearing in the same order.' +
              ' to use this option, provide the first FASTQ paired end read using --input-file and the secone one using --input-file-2')
-    parser.add_argument('--input-file-2', default=None,
+    input_output_args.add_argument('--input-file-2', default=None,
         help='Path to one of the FASTQ files storing the paired end reads. ' +
              'The FASTQ file containing corresponding read mates should be provided using --input-file argument. ' +
              'Both FASTQ files are required in case FASTQ is the chosen input file.')
 
-    parser.add_argument('--docker', action="store_true", default=False,
-        help='Run FastViFi in Docker mode [False]. This argument is intended for internal use. \n' +
-             'To run containerized FastViFi, run run_kraken_vifi_docker.py.')
 
-    parser.add_argument('--virus', default=None, choices=virus_types, nargs="+",
+    container_args = parser.add_argument_group('Arguments related to running with a container')
+    container_args.add_argument('--docker', action="store_true", default=False,
+        help='Run FastViFi in Docker mode [False]. This argument is intended for internal use. \n' +
+             'To run containerized FastViFi, run run_kraken_vifi_container.py with --docker.')
+    container_args.add_argument('--singularity', action="store_true", default=False,
+        help='Run FastViFi in container mode with Singularity [False]. This argument is intended for internal use. \n' +
+             'To run containerized FastViFi, run run_kraken_vifi_container.py with --singularity.')
+
+    virus_args = parser.add_argument_group('Arguments related to viruses')
+    virus_args.add_argument('--virus', default=None, choices=virus_types, nargs="+",
         help='The virus name used for this experiment [all]'.format(virus_types))
-    parser.add_argument('--keep-all-virus-files', default=False, action="store_true",
+    virus_args.add_argument('--keep-all-virus-files', default=False, action="store_true",
         help='Keep all files for viruses where FastViFi could not find any viral reads.\n' +
              'Enabling this flag increases the number of output files signifincantly ' +
              'when searching among all viral databases [False].')
 
-    parser.add_argument('--keep-intermediate-files', action="store_true", default=False,
+
+    steps_args = parser.add_argument_group('Arguments related to steps of the pipeline and intermediate files')
+    steps_args.add_argument('--keep-intermediate-files', action="store_true", default=False,
         help='Keep the FASTQ files filtered for each filtering step as well as kraken output and report [False].')
-    parser.add_argument('--skip-bwa-filter', action="store_true", default=False,
+    steps_args.add_argument('--skip-bwa-filter', action="store_true", default=False,
         help='Skip the BWA filtering on aligned reads [False]')
-    parser.add_argument('--skip-kraken-filters', action="store_true", default=False,
+    steps_args.add_argument('--skip-kraken-filters', action="store_true", default=False,
         help='Skip the Kraken filtering steps and direct all input to ViFi.\n' +
              'Using this flag drastically increases the runtime [False].')
-    parser.add_argument('--one-level-kraken', action="store_true", default=False,
+    steps_args.add_argument('--one-level-kraken', action="store_true", default=False,
         help='Skip the second Kraken filtering step [False].')
-    parser.add_argument('--skip-vifi', action="store_true", default=False,
+    steps_args.add_argument('--skip-vifi', action="store_true", default=False,
         help='Skip the ViFi call. Report the results of Kraken filtering.\n' +
              'This flag results in a high number of false positive and non-viral reads[False].')
-    parser.add_argument('--skip-vifi-hmms', action="store_true", default=False,
+    steps_args.add_argument('--skip-vifi-hmms', action="store_true", default=False,
         help='Do not use HMMs when calling ViFi. This does not disable ViFi, only disables the call to HMM alignment.\n' +
              'This flag is useful when there are not many viral strains available,\n' +
              'therefore, the HMMs are not likely to capture conserved or highly variant regions in the viral genome[False].')
 
-    parser.add_argument('--level', '-l', default=virus_detection_mode[0], choices=virus_detection_mode,
+    filtering_args = parser.add_argument_group('Arguments related to filtering parameters')
+    filtering_args.add_argument('--level', '-l', default=virus_detection_mode[0], choices=virus_detection_mode,
         help='The level of virus detection [{}]'.format(virus_detection_mode[0]))
-    parser.add_argument('--k1', type=int, default=None,
+    filtering_args.add_argument('--k1', type=int, default=None,
         help='The length of k-mers used in the first Kraken filter including human and viral references [{} for {} and {} for {}]'
         .format(default_config[virus_detection_mode[0]]['k1'], virus_detection_mode[0],
                 default_config[virus_detection_mode[1]]['k1'], virus_detection_mode[1]))
-    parser.add_argument('--k2', type=int, default=None,
+    filtering_args.add_argument('--k2', type=int, default=None,
         help='The length of k-mers used in the second Kraken filter including only viral references [{} for {} and {} for {}]'
         .format(default_config[virus_detection_mode[0]]['k2'], virus_detection_mode[0],
                 default_config[virus_detection_mode[1]]['k2'], virus_detection_mode[1]))
-    parser.add_argument('--u1', type=float, default=None,
+    filtering_args.add_argument('--u1', type=float, default=None,
         help='The parameter u1 reflecting the ratio of unmapped k-mers to consider the read unmapped (and pass) ' +
              'in the first filter. The value should be between 0 and 1 [{} for {} and {} for {}]'
         .format(default_config[virus_detection_mode[0]]['u1'], virus_detection_mode[0],
                 default_config[virus_detection_mode[1]]['u1'], virus_detection_mode[1]))
-    parser.add_argument('--u2', type=float, default=None,
+    filtering_args.add_argument('--u2', type=float, default=None,
         help='The parameter u2 reflecting the ratio of unmapped k-mers to consider the read unmapped (and discard) ' +
              'in the first filter. The value should be between 0 and 1 [{} for {} and {} for {}]'
         .format(default_config[virus_detection_mode[0]]['u2'], virus_detection_mode[0],
                 default_config[virus_detection_mode[1]]['u2'], virus_detection_mode[1]))
-    parser.add_argument('--t1', type=float, default=None,
+    filtering_args.add_argument('--t1', type=float, default=None,
         help='The threshold on the score of the read to be considered viral. ' +
              'The value should be between 0 and 1 [{} for {} and {} for {}]'
         .format(default_config[virus_detection_mode[0]]['t1'], virus_detection_mode[0],
                 default_config[virus_detection_mode[1]]['t1'], virus_detection_mode[1]))
 
-    parser.add_argument('--gt-viral-path', default=None,
+    dev_args = parser.add_argument_group('Arguments related to development of FastViFi')
+    dev_args.add_argument('--gt-viral-path', default=None,
         help='The path to the file containing the read ids for the ground truth viral reads. ' +
              'This is for the experiments on the simulated reads where the ground truth ' +
              'viral reads are known. By providing this option, the true positive, false positive, ' +
              'and false negative counts will be reported.')
-    parser.add_argument('--kraken-grid-search', action='store_true',
+    dev_args.add_argument('--kraken-grid-search', action='store_true',
         help='Compute precision and recall based on kraken output Fastq files instead of ViFi output files. ' +
              'Use with --gt-viral-path to get the precision and recall.')
 
-    parser.add_argument("--threads", type=int, default=1,
+    running_args = parser.add_argument_group('Running arguments')
+    running_args.add_argument("--threads", type=int, default=1,
         help='Number of threads to use when running Kraken and ViFi [1]')
-    parser.add_argument('--verbose', '-v', action='store_true',
+    running_args.add_argument('--verbose', '-v', action='store_true',
         help='Print verbose debugging information.')
+
     args = parser.parse_args()
 
     check_arguments_validity(args)
@@ -310,8 +327,6 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
             command += " --sensitive"
         if args.skip_vifi_hmms:
             command += "  --disable_hmms"
-        #if args.vifi_viral_ref_dir is not None:
-        #    command += ' --viral_reference_dir {} '.format(args.vifi_viral_ref_dir)
         if args.verbose:
             log_file_pipeline.write(command + os.linesep)
         shell_output = subprocess.check_output(
@@ -409,9 +424,10 @@ def run_pipeline(args):
         print(message)
     else:
         os.makedirs(args.output_dir)
-    log_file_path = os.path.join(args.output_dir, "log_kraken_vifi_pipeline")
-    log_file_pipeline = open(log_file_path, 'a+')
-    log_file_pipeline_shell = open(log_file_path + "_verbose", 'ab+')
+    log_file_path = os.path.join(args.output_dir, "log_fastvifi.txt")
+    verbose_log_file_path = os.path.join(args.output_dir, "log_fastvifi_verbose.txt")
+    log_file_pipeline = open(log_file_path, 'w+')
+    log_file_pipeline_shell = open(verbose_log_file_path, 'wb+')
     log_file_pipeline.write("Processing file {} to output {}".format(
         args.input_file, args.output_dir) + os.linesep)
     log_file_pipeline.write("Arguments and values:" + os.linesep)

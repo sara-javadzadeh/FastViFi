@@ -12,16 +12,32 @@ Kraken datasets for **sample-level** FastViFi for HPV virus are available on htt
 
 We recommend running FastViFi with **sample-level** first. It is possible to customize the level of sensitivity (with the cost of runtime) with a different set of parameters to FastViFi which require different Kraken2 datasets. More information on customizing FastViFi is provided in the FastViFi manuscript (in preparation). For more information, contact: saraj@eng.ucsd.edu.
 
-If Kraken2 is installed locally, move both datasets to the path where Kraken2 is installed. Otherwise, to run FastViFi based on the Docker image, the directory to the Kraken2 datasets should be provided to `run_kraken_vifi_docker.py` with the `--kraken-db-path` argument.
+If Kraken2 is installed locally, move both datasets to the path where Kraken2 is installed. Otherwise, to run FastViFi with Docker or Singularity, the directory to the Kraken2 datasets should be provided to `run_kraken_vifi_container.py` with the `--kraken-db-path` argument.
 To create custom datasets, see the "Custom Kraken datasets" section below.
 
 ### ViFi Datasets
-If ViFi is installed locally, the viral references is downloaded at the time of cloning ViFi. Otherwise, to run FastViFi based on the Docker image, download the viral references from the ViFi repository (https://github.com/sara-javadzadeh/ViFi). After cloning the repository and un-compressing the file `viral_data.tar.gz`, the viral reference for each of the desired viruses can be found on `viral_data/<VIRUS>/<VIRUS>.unaligned.fas*`  where `<VIRUS>` can be either of the following: hpv, hbv, hcv or ebv. Note that to run FastViFi Docker image, the viral reference directory should be provided to `run_kraken_vifi_docker.py` with the `--vifi-viral-ref-dir` argument.
+If ViFi is installed locally, the viral references is downloaded at the time of cloning ViFi. Otherwise, to run FastViFi based on the Docker image, download the viral references from the ViFi repository (https://github.com/sara-javadzadeh/ViFi). After cloning the repository and un-compressing the file `viral_data.tar.gz`, the viral reference for each of the desired viruses can be found on `viral_data/<VIRUS>/<VIRUS>.unaligned.fas*`  where `<VIRUS>` can be either of the following: hpv, hbv, hcv or ebv. Note that to run FastViFi with Docker or Singularity, the viral reference directory should be provided to `run_kraken_vifi_container.py` with the `--vifi-viral-ref-dir` argument.
 
-Whether or not ViFi is installed locally, the human reference data file should be downloaded from https://drive.google.com/file/d/1XBZbwgcV1n2AWWAyt2RWfSKKxzssRFBo/view?usp=share_link. If ViFi is locally installed, the downloaded file should be placed inside the ViFi directory. Otherwise, to run FastViFi based on the Docker image, the human reference directory should be passed to `run_kraken_vifi_docker.py` with the `--vifi-human-ref-dir` argument.
+Whether or not ViFi is installed locally, the human reference data file should be downloaded from https://drive.google.com/file/d/1XBZbwgcV1n2AWWAyt2RWfSKKxzssRFBo/view?usp=share_link. If ViFi is locally installed, the downloaded file should be placed inside the ViFi directory. Otherwise, to run FastViFi with Docker or Singularity, the human reference directory should be passed to `run_kraken_vifi_container.py` with the `--vifi-human-ref-dir` argument.
 
 # Installation
 There are two ways to run FastViFi: using the Docker image or locally installing dependencies. The Docker image includes pre-installed dependencies (Kraken and ViFi). However, to create a smaller sized Docker image, the data files are not included in the image. To download the necessary data files, refer to the "Download Data Files" section. Follow the instructions on either section "Running FastViFi Docker Image" or "Running FastViFi by Locally Installing Dependencies". Correct installation can be verified by running the toy example (see section "Toy Example").
+
+
+## Running FastViFi with Singularity
+To run FastViFi with Singularity, run:
+
+`python run_kraken_vifi_container.py --singularity --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>] --output-dir <output directory> --virus <virus> --kraken-db-path <path to where the downloaded kraken datasets> --vifi-viral-ref-dir <viral referece directory> --vifi-human-ref-dir <path to the human reference directory>`
+
+Note that running this script the first time will create a `fastvifi_latest.sif` file from the latest FastViFi Docker image and run FastViFi on the Singularity container. Any later run will use the already created `fastvifi_latest.sif` file and will not build it from scratch.
+
+If the input is a bam file, provide the path to the file with `--input-file` argument. Ignore the --input-file-2 argument. However, if the input is in form of a pair of FASTA/FASTQ files (for paired end reads), use the `--input-file-2` argument to provide the path to the second file and use `--skip-bwa-filter`. The `--skip-bwa-filter` refers to filtering reads based on alignment into the human genome in an already aligned set of reads, which is only usable when the input is a BAM file.
+
+Output directory should be writable by other users (i.e., the user in the Docker container). `run_kraken_vifi_container.py` will change the access permissions if that is not the case.
+
+For the `--virus` argument, we currently provide datasets for all of the following: hpv, hbv, hcv or ebv. Note that multiple viruses can be provided to FastViFi by adding additional `--virus` arguments.
+
+Arguments `--kraken-db-path`, `--vifi-viral-ref-dir` and `--vifi-human-ref-dir` are dedicated to providing the path to the corresponding dataset. See section "Download Data Files" for instructions on how to download the datasets.
 
 ## Running FastViFi Docker Image
 To run the Docker image for FastViFi, first download the image from DockerHub:
@@ -29,11 +45,11 @@ To run the Docker image for FastViFi, first download the image from DockerHub:
 Next, make sure the necessary datasets are installed (see section "Download Data Files").
 
 To run FastViFi with the Docker image, run:
-`python run_kraken_vifi_docker.py --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>] --output-dir <output directory> --virus <virus> --kraken-db-path <path to where the downloaded kraken datasets> --vifi-viral-ref-dir <viral referece directory> --vifi-human-ref-dir <path to the human reference directory>`
+`python run_kraken_vifi_container.py --docker --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>] --output-dir <output directory> --virus <virus> --kraken-db-path <path to where the downloaded kraken datasets> --vifi-viral-ref-dir <viral referece directory> --vifi-human-ref-dir <path to the human reference directory>`
 
 If the input is a bam file, provide the path to the file with `--input-file` argument. Ignore the --input-file-2 argument. However, if the input is in form of a pair of FASTA/FASTQ files (for paired end reads), use the `--input-file-2` argument to provide the path to the second file and use `--skip-bwa-filter`. The `--skip-bwa-filter` refers to filtering reads based on alignment into the human genome in an already aligned set of reads, which is only usable when the input is a BAM file.
 
-Output directory should be writable by other users (i.e., the user in the Docker container). `run_kraken_vifi_docker.py` will change the access permissions if that is not the case.
+Output directory should be writable by other users (i.e., the user in the Docker container). `run_kraken_vifi_container.py` will change the access permissions if that is not the case.
 
 For the `--virus` argument, we currently provide datasets for all of the following: hpv, hbv, hcv or ebv. Note that multiple viruses can be provided to FastViFi by adding additional `--virus` arguments.
 
