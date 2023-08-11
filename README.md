@@ -66,7 +66,7 @@ python run_kraken_vifi_pipeline.py --output-dir $OUTPUT_DIR --input-file $INPUT_
 ```
 - `OUTPUT_DIR` is the directory to store all the output files.
 - `$INPUT_BAM` is the path to the input BAM file. FastViFi also works on a pair of FASTQ files for unaligned paired-end reads. See the manual or contact the author for more information.
-- `$FASTVIFI_LEVEL` sets the configurations based on the level of sensitivity in FastViFi. Set the `--level` to `sample-level-validation-intermediate` for **sample-level** FastViFi and `sensitive-level-validation-intermediate` for **read-level** FastViFi for each FastViFi call. It is possible to add customized configuration values. For more information, please contact the author.
+- `$FASTVIFI_LEVEL` sets the configurations based on the level of sensitivity in FastViFi. Set the `--level` to `sample-level` for **sample-level** FastViFi and `sensitive-level` for **read-level** FastViFi for each FastViFi call. **sample-level** is recommended as it is faster while reporting the viral and hybrid human-viral reads in the sample. It is possible to add customized configuration values. For more information, please contact the author.
 - `$KRAKEN_PATH` is the path to the Kraken2 executable file named kraken2 within the Kraken2 directory. See `Installation` section for installing Kraken2 and setting up customized datasets prior to running FastViFi.
 - `$VIFI_PATH` is the path to ViFi main python script named `run_vifi.py`. See `Installation` setion for installing ViFi prior to running FastViFi.
 
