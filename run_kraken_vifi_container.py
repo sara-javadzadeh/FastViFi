@@ -27,7 +27,7 @@ def call_fastvifi_pipeline(args):
         docker_image_tag = " docker://{}".format(docker_image_tag)
         if not os.path.exists(singularity_image_tag):
             # Build a singularity .sif file from the docker image, if doesn't exist.
-            command = "singularity pull {};".format(docker_image_tag) + \
+            command = "singularity pull {};".format(docker_image_tag)
             # This is for building a .sif file from a local docker image.
             #command = "singularity build {} {}; ".format(singularity_image_tag, docker_image_tag)
         else:
