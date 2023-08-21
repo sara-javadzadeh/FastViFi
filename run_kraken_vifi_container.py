@@ -22,17 +22,29 @@ def call_fastvifi_pipeline(args):
     docker_image_tag = "sarajava/fastvifi"
     # Command for Singularity
     if args.singularity:
+        # Running as a user
+        singularity_image_tag = "fastvifi_latest.sif"
         docker_image_tag = " docker://{}".format(docker_image_tag)
-        command = "singularity pull {};".format(docker_image_tag) + \
-        " singularity run " + \
+        if not os.path.exists(singularity_image_tag):
+            # Build a singularity .sif file from the docker image, if doesn't exist.
+            command = "singularity pull {};".format(docker_image_tag) + \
+            # This is for building a .sif file from a local docker image.
+            #command = "singularity build {} {}; ".format(singularity_image_tag, docker_image_tag)
+        else:
+            # Once the .sif file is created, it can be re-used for future runs.
+            # No need to run the build command again.
+            command = ""
+        command += " singularity run " + \
         "--bind {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
+
         if args.input_file_2 is not None:
             command += "--bind {}:/home/input/{} ".format(args.input_file_2, os.path.basename(args.input_file_2))
         command += "--bind {}:/home/kraken2-db ".format(kraken_db_path) + \
             "--bind {}:/home/data_repo/ ".format(vifi_hg_data_path) + \
             "--bind {}:/home/repo/data/ ".format(vifi_viral_data_path) + \
             "--bind {}:/home/output/ ".format(args.output_dir) + \
-            "{} ".format(docker_image_tag) + \
+            "--bind ./run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py " + \
+            "{} ".format(singularity_image_tag) + \
             "python /home/fastvifi/run_kraken_vifi_pipeline.py " + \
             "--kraken-path /home/kraken2/kraken2 " + \
             "--vifi-path /home/ViFi/scripts/run_vifi.py " + \

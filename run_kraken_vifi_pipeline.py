@@ -144,8 +144,9 @@ def parse_input_args(docker_run=False):
              'To run containerized FastViFi, run run_kraken_vifi_container.py with --singularity.')
 
     virus_args = parser.add_argument_group('Arguments related to viruses')
-    virus_args.add_argument('--virus', default=None, choices=virus_types, nargs="+",
-        help='The virus name used for this experiment [all]'.format(virus_types))
+    virus_args.add_argument('--virus', default=None, nargs="+",
+        help='The virus name used for this experiment e.g. hpv.\n' +
+        "Alternatively you can add a custom virus with corresponding Kraken databases and ViFi HMMs.")
     virus_args.add_argument('--keep-all-virus-files', default=False, action="store_true",
         help='Keep all files for viruses where FastViFi could not find any viral reads.\n' +
              'Enabling this flag increases the number of output files signifincantly ' +

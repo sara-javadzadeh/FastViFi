@@ -31,14 +31,18 @@ ENV TZ=USA/NY
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 #Download libraries for AA
-RUN apt-get update && apt-get install -y && \
- apt-get install python-dev gfortran python3-pip zlib1g-dev -y && \
- pip install pysam gcloud && \
- pip install numpy scipy matplotlib && \
- apt-get install bwa && \
- apt-get install -y make && \
- apt-get install -y perl && \
- apt-get install -y cpanminus
+RUN apt-get update
+RUN apt-get install -y
+RUN apt-get install -y python-dev gfortran python3-pip zlib1g-dev libbz2-dev liblzma-dev libjpeg-dev
+RUN apt-get install -y python3.7
+RUN update-alternatives --install /usr/local/bin/python python /usr/bin/python3.7 1;
+RUN update-alternatives --install /usr/local/bin/python python /usr/bin/python3.6 2;
+RUN pip3 install pysam google-cloud
+RUN pip3 install numpy scipy matplotlib
+RUN apt-get install bwa
+RUN apt-get install -y make
+RUN apt-get install -y perl
+RUN apt-get install -y cpanminus
 
 #Set up gcloud
 RUN apt-get install lsb-release curl -y
@@ -51,15 +55,15 @@ RUN apt-get update && \
  libncurses5-dev libncursesw5-dev \
  r-base r-base-dev libcurl4-openssl-dev pkg-config \
  git
-RUN pip install -U crcmod && \
- pip install --upgrade google-api-python-client && \
- pip install requests && \
- pip install dendropy
+RUN pip3 install -U crcmod
+RUN python3.7 -m pip install --upgrade google-api-python-client
+RUN pip3 install requests
+RUN pip3 install dendropy
 
 # ViFi uses pysam library on python2.
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py && \
- python get-pip.py && \
- pip2 install pysam
+RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+RUN python2.7 get-pip.py
+RUN python2.7 -m pip install pysam
 
 # Perl Libs
 RUN cpanm PerlIO::gzip
@@ -99,7 +103,7 @@ WORKDIR /home/
 USER $FASTVIFIUSER
 
 # Download ViFi.
-RUN cd /home && \
+RUN cd /home &&\
  git clone https://github.com/sara-javadzadeh/ViFi.git
 
 
@@ -151,6 +155,5 @@ RUN chown --changes --no-dereference --recursive \
 
 
 USER $FASTVIFIUSER
-ADD run_kraken_vifi_pipeline.py /home/fastvifi
 
-WORKDIR /home/fastvifi
+WORKDIR /home/fastvifi/FastViFi
