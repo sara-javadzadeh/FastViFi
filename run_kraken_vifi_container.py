@@ -19,11 +19,11 @@ def call_fastvifi_pipeline(args):
     kraken_db_path = args.kraken_db_path
     vifi_hg_data_path = os.path.join(args.vifi_human_ref_dir)
     vifi_viral_data_path = os.path.join(args.vifi_viral_ref_dir)
-    docker_image_tag = "sarajava/fastvifi"
+    docker_image_tag = "sarajava/fastvifi:v1.1"
     # Command for Singularity
     if args.singularity:
         # Running as a user
-        singularity_image_tag = "fastvifi_latest.sif"
+        singularity_image_tag = "fastvifi_v1.1.sif"
         docker_image_tag = " docker://{}".format(docker_image_tag)
         if not os.path.exists(singularity_image_tag):
             # Build a singularity .sif file from the docker image, if doesn't exist.
@@ -54,7 +54,6 @@ def call_fastvifi_pipeline(args):
             "--docker "
     # Command for Docker
     if args.docker:
-        docker_image_tag = docker_image_tag + ":latest"
         command = "docker run --rm " + \
         "--read-only -v {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
         if args.input_file_2 is not None:
