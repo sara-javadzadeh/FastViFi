@@ -27,9 +27,19 @@ There are two ways to run FastViFi: using the Docker image or locally installing
 ## Running FastViFi with Singularity
 To run FastViFi with Singularity, run:
 
-`python run_kraken_vifi_container.py --singularity --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>] --output-dir <output directory> --virus <virus> --kraken-db-path <path to where the downloaded kraken datasets> --vifi-viral-ref-dir <viral referece directory> --vifi-human-ref-dir <path to the human reference directory>`
+```
+python run_kraken_vifi_container.py
+    --singularity 
+    --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>]
+    --output-dir <output directory>
+    --virus <virus>
+    --kraken-db-path<path to where the downloaded kraken datasets>
+    --vifi-viral-ref-dir <viral referece directory i.e., downloaded file named viral_data>
+    --human-chr-list <path to a file containing the names of human chromosomes in the bam file, one per line (e.g. chr\nchr2\n...). Paired end reads where both mates are mapped to these sequences are discarded as human-only reads.>
+    --vifi-human-ref-dir <path to the human reference directory, i.e., downloaded file named data_repo>
+```
 
-Note that running this script the first time will create a `fastvifi_latest.sif` file from the latest FastViFi Docker image and run FastViFi on the Singularity container. Any later run will use the already created `fastvifi_latest.sif` file and will not build it from scratch.
+Note that running this script the first time will create a `fastvifi_v1.1.sif` file from the latest FastViFi Docker image and run FastViFi on the Singularity container. Any later run will use the already created `fastvifi_v1.1.sif` file and will not build it from scratch.
 
 If the input is a bam file, provide the path to the file with `--input-file` argument. Ignore the --input-file-2 argument. However, if the input is in form of a pair of FASTA/FASTQ files (for paired end reads), use the `--input-file-2` argument to provide the path to the second file and use `--skip-bwa-filter`. The `--skip-bwa-filter` refers to filtering reads based on alignment into the human genome in an already aligned set of reads, which is only usable when the input is a BAM file.
 
@@ -45,7 +55,17 @@ To run the Docker image for FastViFi, first download the image from DockerHub:
 Next, make sure the necessary datasets are installed (see section "Download Data Files").
 
 To run FastViFi with the Docker image, run:
-`python run_kraken_vifi_container.py --docker --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>] --output-dir <output directory> --virus <virus> --kraken-db-path <path to where the downloaded kraken datasets> --vifi-viral-ref-dir <viral referece directory> --vifi-human-ref-dir <path to the human reference directory>`
+```
+python run_kraken_vifi_container.py
+    --docker
+    --input-file <input file (BAM or FASTQ)> [--input-file-2 <input file 2 (for the second FASTQ file)>]
+    --output-dir <output directory>
+    --virus <virus>
+    --kraken-db-path <path to where the downloaded kraken datasets>
+    --vifi-viral-ref-dir <viral referece directory i.e., downloaded file named viral_data>
+    --human-chr-list <path to a file containing the names of human chromosomes in the bam file, one per line (e.g. chr\nchr2\n...). Paired end reads where both mates are mapped to these sequences are discarded as human-only reads.>
+    --vifi-human-ref-dir <path to the human reference directory i.e., downloaded file named data_repo>
+```
 
 If the input is a bam file, provide the path to the file with `--input-file` argument. Ignore the --input-file-2 argument. However, if the input is in form of a pair of FASTA/FASTQ files (for paired end reads), use the `--input-file-2` argument to provide the path to the second file and use `--skip-bwa-filter`. The `--skip-bwa-filter` refers to filtering reads based on alignment into the human genome in an already aligned set of reads, which is only usable when the input is a BAM file.
 
@@ -62,7 +82,14 @@ Follow the installation guides on https://github.com/sara-javadzadeh/ViFi and ht
 FastViFi can be used on WGS or RNA-seq files. The recommended process for running FastViFi is to run **sample-level** FastViFi on all samples (lower runtime but less sensitive) followed by running **read-level** FastViFi on samples where viral reads were detected. Use the following command to run FastViFi:
 
 ```
-python run_kraken_vifi_pipeline.py --output-dir $OUTPUT_DIR --input-file $INPUT_BAM --level $FASTVIFI_LEVEL --kraken-path $KRAKEN_PATH --vifi-path $VIFI_PATH --human-chr-list $human_chr_list.txt --virus $VIRUSES
+python run_kraken_vifi_pipeline.py
+  --output-dir $OUTPUT_DIR
+  --input-file $INPUT_BAM
+  --level $FASTVIFI_LEVEL
+  --kraken-path $KRAKEN_PATH
+  --vifi-path $VIFI_PATH
+  --human-chr-list $human_chr_list.txt
+  --virus $VIRUSES
 ```
 - `OUTPUT_DIR` is the directory to store all the output files.
 - `$INPUT_BAM` is the path to the input BAM file. FastViFi also works on a pair of FASTQ files for unaligned paired-end reads. See the manual or contact the author for more information.
