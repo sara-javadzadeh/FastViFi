@@ -35,8 +35,9 @@ def call_fastvifi_pipeline(args):
             # No need to run the build command again.
             command = ""
         command += " singularity run " + \
-        "--bind {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
-
+        "--bind {}:/home/input/ ".format(os.path.dirname(args.input_file))
+        #"--bind {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
+        
         if args.input_file_2 is not None:
             command += "--bind {}:/home/input/{} ".format(args.input_file_2, os.path.basename(args.input_file_2))
         command += "--bind {}:/home/kraken2-db ".format(kraken_db_path) + \
@@ -55,7 +56,9 @@ def call_fastvifi_pipeline(args):
     # Command for Docker
     if args.docker:
         command = "docker run --rm " + \
-        "--read-only -v {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
+        "--read-only -v {}:/home/input/ ".format(os.path.dirname(args.input_file))
+        #"--read-only -v {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
+        
         if args.input_file_2 is not None:
             command += "--read-only -v {}:/home/input/{} ".format(args.input_file_2, os.path.basename(args.input_file_2))
 
