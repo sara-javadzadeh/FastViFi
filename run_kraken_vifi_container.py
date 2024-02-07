@@ -35,16 +35,15 @@ def call_fastvifi_pipeline(args):
             # No need to run the build command again.
             command = ""
         command += " singularity run " + \
-        "--bind {}:/home/input/ ".format(os.path.dirname(args.input_file))
-        #"--bind {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
-        
+        "--bind {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
         if args.input_file_2 is not None:
             command += "--bind {}:/home/input/{} ".format(args.input_file_2, os.path.basename(args.input_file_2))
         command += "--bind {}:/home/kraken2-db ".format(kraken_db_path) + \
             "--bind {}:/home/data_repo/ ".format(vifi_hg_data_path) + \
             "--bind {}:/home/repo/data/ ".format(vifi_viral_data_path) + \
             "--bind {}:/home/output/ ".format(args.output_dir) + \
-            "--bind ./run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py " + \
+            "--bind {}/run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py ".format(os.getcwd()) + \
+            "--bind {}/cluster_trans_new.py:/home/ViFi/scripts/cluster_trans_new.py ".format(os.getcwd()) + \
             "{} ".format(singularity_image_tag) + \
             "python /home/fastvifi/run_kraken_vifi_pipeline.py " + \
             "--kraken-path /home/kraken2/kraken2 " + \
@@ -56,15 +55,15 @@ def call_fastvifi_pipeline(args):
     # Command for Docker
     if args.docker:
         command = "docker run --rm " + \
-        "--read-only -v {}:/home/input/ ".format(os.path.dirname(args.input_file))
-        #"--read-only -v {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
-        
+        "--read-only -v {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
         if args.input_file_2 is not None:
             command += "--read-only -v {}:/home/input/{} ".format(args.input_file_2, os.path.basename(args.input_file_2))
 
         command += "--read-only -v {}:/home/kraken2-db ".format(kraken_db_path) + \
             "--read-only -v {}:/home/data_repo/ ".format(vifi_hg_data_path) + \
             "--read-only -v {}:/home/repo/data/ ".format(vifi_viral_data_path) + \
+            "-v {}/cluster_trans_new.py:/home/ViFi/scripts/cluster_trans_new.py ".format(os.getcwd()) + \
+            "-v {}/run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py ".format(os.getcwd()) + \
             "-v {}:/home/output ".format(args.output_dir) + \
             "{} ".format(docker_image_tag) + \
             "python /home/fastvifi/run_kraken_vifi_pipeline.py " + \
