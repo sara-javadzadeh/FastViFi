@@ -1,5 +1,5 @@
 # FastViFi
-A software to detect viral infection and integration sites for different viruses. FastViFi relies on ViFi and Kraken2 tools. Please use the forked repositories referenced in the installation section which are modified to integrate into FastViFi pipeline.
+A software that detects viral infection and integration sites for different viruses. FastViFi relies on ViFi and Kraken2 tools. Please use the forked repositories referenced in the installation section which are modified to integrate into FastViFi pipeline.
 
 Manuscript for this software is in preparation.
 
