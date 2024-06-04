@@ -9,15 +9,13 @@ def get_human_chr_list(filename):
     chrnames_file = open(filename, "r")
     print("reading chr names")
     for line in chrnames_file.readlines():
-        print("line: {}".format(line))
-        human_chr_names[line.strip()] = True
+        human_chr_names[line.strip().replace(">", "")] = True
     chrnames_file.close()
     # deprecated chr names
     #    human_chr_list = ["chr" + str(i) for i in range(1, 23)]
     #    human_chr_list.extend(["chrX", "chrY", "chrM"])
     #    for chrom in human_chr_list:
     #        human_chr_names[chrom] = True
-    print("human_chr_names: {}".format(human_chr_names))
     return human_chr_names
 
 def is_read_or_pair_unmapped(read):
@@ -58,7 +56,6 @@ def duplicate_single_read(read_1, read_list):
 
 def read_input_file_flag_names(input_bamfile):
     human_chr_names = get_human_chr_list()
-    print("human_chr_names: ", human_chr_names)
     bamfile_references = input_bamfile.references
     for reference in bamfile_references:
         if reference not in human_chr_names:

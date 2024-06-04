@@ -197,6 +197,8 @@ def parse_input_args(docker_run=False):
              'The value should be between 0 and 1 [{} for {} and {} for {}]'
         .format(default_config[virus_detection_mode[0]]['t1'], virus_detection_mode[0],
                 default_config[virus_detection_mode[1]]['t1'], virus_detection_mode[1]))
+    filtering_args.add_argument('--min-hybrid-support', type=int, default=4,
+        help="Minimum number of supporting paired end reads to report a a hybrid junction.")
 
     dev_args = parser.add_argument_group('Arguments related to development of FastViFi')
     dev_args.add_argument('--gt-viral-path', default=None,
@@ -319,7 +321,8 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
               "-f {} -r {} ".format(vifi_input_fq_1, vifi_input_fq_2) +\
               "-o {} --virus {} ".format(args.output_dir, virus) +\
               "-c {} ".format(args.threads) +\
-              "--prefix {} ".format(vifi_output_prefix)
+              "--prefix {} ".format(vifi_output_prefix) + \
+              "--min-support {} ".format(args.min_hybrid_support)
     if not args.skip_vifi:
         log_file_pipeline.write("Starting ViFi classification" + os.linesep)
         if args.vifi_human_ref_dir is not None:
@@ -443,8 +446,12 @@ def run_pipeline(args):
     if not args.skip_bwa_filter:
         if is_aligned_reads(args.input_file):
             log_file_pipeline.write("Filtering reads from input file {}".format(args.input_file) + os.linesep)
+            bwa_filter_file = "filter_reads_bwa_efficient.py"
+            if args.docker:
+                bwa_filter_file = "/home/fastvifi/" + bwa_filter_file
 
-            shell_output = subprocess.check_output("/usr/bin/time -v python filter_reads_bwa_efficient.py {} {} {} {} &>> output".format(
+            shell_output = subprocess.check_output("/usr/bin/time -v python {} {} {} {} {} &>> output".format(
+                bwa_filter_file,
                 args.input_file, args.output_dir, human_chr_list, bwa_filtered_filename_prefix), shell=True)
             log_file_pipeline_shell.write(shell_output)
 

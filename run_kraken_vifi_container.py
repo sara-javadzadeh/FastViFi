@@ -16,9 +16,15 @@ def call_fastvifi_pipeline(args):
         "instructions on how to download the databases and provide " + \
         "the path to the program using --kraken-db-path argument.")
         exit(1)
+    if args.singularity is None and args.docker is None:
+        print("Error: Either --singularity or --docker should be used.")
+        exit(1)
     kraken_db_path = args.kraken_db_path
     vifi_hg_data_path = os.path.join(args.vifi_human_ref_dir)
     vifi_viral_data_path = os.path.join(args.vifi_viral_ref_dir)
+    threads_arg = ""
+    if args.threads is not None:
+        threads_arg = " --threads {}".format(args.threads)
     docker_image_tag = "sarajava/fastvifi:v1.1"
     # Command for Singularity
     if args.singularity:
@@ -43,7 +49,7 @@ def call_fastvifi_pipeline(args):
             "--bind {}:/home/repo/data/ ".format(vifi_viral_data_path) + \
             "--bind {}:/home/output/ ".format(args.output_dir) + \
             "--bind {}/run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py ".format(os.getcwd()) + \
-            "--bind {}/cluster_trans_new.py:/home/ViFi/scripts/cluster_trans_new.py ".format(os.getcwd()) + \
+            "--bind {}/filter_reads_bwa_efficient.py:/home/fastvifi/filter_reads_bwa_efficient.py ".format(os.getcwd()) + \
             "{} ".format(singularity_image_tag) + \
             "python /home/fastvifi/run_kraken_vifi_pipeline.py " + \
             "--kraken-path /home/kraken2/kraken2 " + \
@@ -51,6 +57,8 @@ def call_fastvifi_pipeline(args):
             "--output /home/output " + \
             "--human-chr-list /home/data_repo/GRCh38/chrom_list.txt " + \
             "--kraken-db-path /home/kraken2-db " + \
+            "--min-hybrid-support {}".format(args.min_hybrid_support) + \
+            "{} ".format(threads_arg) + \
             "--docker "
     # Command for Docker
     if args.docker:
@@ -72,6 +80,8 @@ def call_fastvifi_pipeline(args):
             "--output /home/output " + \
             "--human-chr-list /home/data_repo/GRCh38/chrom_list.txt " + \
             "--kraken-db-path /home/kraken2-db " + \
+            "--min-hybrid-support {}".format(args.min_hybrid_support) + \
+            "{} ".format(threads_arg) + \
             "--docker "
     if args.virus is None:
         print("Error: At least one virus should be provided with the --virus argument.")
