@@ -25,11 +25,11 @@ def call_fastvifi_pipeline(args):
     threads_arg = ""
     if args.threads is not None:
         threads_arg = " --threads {}".format(args.threads)
-    docker_image_tag = "sarajava/fastvifi:v1.1"
+    docker_image_tag = "sarajava/fastvifi:v1.2"
     # Command for Singularity
     if args.singularity:
         # Running as a user
-        singularity_image_tag = "fastvifi_v1.1.sif"
+        singularity_image_tag = "fastvifi_v1.2.sif"
         docker_image_tag = " docker://{}".format(docker_image_tag)
         if not os.path.exists(singularity_image_tag):
             # Build a singularity .sif file from the docker image, if doesn't exist.
@@ -70,7 +70,6 @@ def call_fastvifi_pipeline(args):
         command += "--read-only -v {}:/home/kraken2-db ".format(kraken_db_path) + \
             "--read-only -v {}:/home/data_repo/ ".format(vifi_hg_data_path) + \
             "--read-only -v {}:/home/repo/data/ ".format(vifi_viral_data_path) + \
-            "-v {}/cluster_trans_new.py:/home/ViFi/scripts/cluster_trans_new.py ".format(os.getcwd()) + \
             "-v {}/run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py ".format(os.getcwd()) + \
             "-v {}:/home/output ".format(args.output_dir) + \
             "{} ".format(docker_image_tag) + \

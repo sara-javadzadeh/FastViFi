@@ -1,11 +1,11 @@
-FROM ubuntu
+FROM ubuntu:18.04
 
 ARG FASTVIFIVER="1.0"
 ARG FASTVIFIUSER="fastvifi"
 ARG FASTVIFIGROUP="fastvifi_group"
 
 
-LABEL dockerfile.version="1.0"
+LABEL dockerfile.version="1.2"
 LABEL software="FastViFi"
 LABEL software.version="1"
 LABEL description="Tool to detect viral presence and hybrid DNA/RNA junctions from NGS data."
