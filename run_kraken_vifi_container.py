@@ -22,14 +22,11 @@ def call_fastvifi_pipeline(args):
     kraken_db_path = args.kraken_db_path
     vifi_hg_data_path = os.path.join(args.vifi_human_ref_dir)
     vifi_viral_data_path = os.path.join(args.vifi_viral_ref_dir)
-    threads_arg = ""
-    if args.threads is not None:
-        threads_arg = " --threads {}".format(args.threads)
-    docker_image_tag = "sarajava/fastvifi:v1.2"
+    docker_image_tag = "sarajava/fastvifi:v1.2.1"
     # Command for Singularity
     if args.singularity:
         # Running as a user
-        singularity_image_tag = "fastvifi_v1.2.sif"
+        singularity_image_tag = "fastvifi_v1.2.1.sif"
         docker_image_tag = " docker://{}".format(docker_image_tag)
         if not os.path.exists(singularity_image_tag):
             # Build a singularity .sif file from the docker image, if doesn't exist.
@@ -57,8 +54,7 @@ def call_fastvifi_pipeline(args):
             "--output /home/output " + \
             "--human-chr-list /home/data_repo/GRCh38/chrom_list.txt " + \
             "--kraken-db-path /home/kraken2-db " + \
-            "--min-hybrid-support {}".format(args.min_hybrid_support) + \
-            "{} ".format(threads_arg) + \
+            "--min-hybrid-support {} ".format(args.min_hybrid_support) + \
             "--docker "
     # Command for Docker
     if args.docker:
@@ -79,12 +75,12 @@ def call_fastvifi_pipeline(args):
             "--output /home/output " + \
             "--human-chr-list /home/data_repo/GRCh38/chrom_list.txt " + \
             "--kraken-db-path /home/kraken2-db " + \
-            "--min-hybrid-support {}".format(args.min_hybrid_support) + \
-            "{} ".format(threads_arg) + \
+            "--min-hybrid-support {} ".format(args.min_hybrid_support) + \
             "--docker "
     if args.virus is None:
         print("Error: At least one virus should be provided with the --virus argument.")
         exit(1)
+    # Add additional flags
     for virus in args.virus:
         command += "--virus {} ".format(virus)
     command += "--input-file /home/input/{} ".format(os.path.basename(args.input_file))
@@ -92,6 +88,11 @@ def call_fastvifi_pipeline(args):
         command += "--input-file-2 /home/input/{} ".format(os.path.basename(args.input_file_2))
     if args.skip_bwa_filter:
         command += " --skip-bwa-filter "
+    if args.threads is not None:
+        command += " --threads {}".format(args.threads)
+    if args.skip_kraken_filters is not None:
+        command += " --skip-kraken-filters"
+
     print(command)
     shell_output = subprocess.check_output(
         command, shell=True)

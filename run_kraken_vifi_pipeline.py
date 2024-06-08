@@ -258,7 +258,7 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
         log_file_pipeline.write("Running Kraken2 to classify the reads in {} and {}".format(
             bwa_filtered_fq_filename_1, bwa_filtered_fq_filename_2) + os.linesep)
         shell_output = subprocess.check_output(
-            "/usr/bin/time -v {} --use-names ".format(args.kraken_path) +
+            "{} --use-names ".format(args.kraken_path) +
             "--report {} ".format(first_level_kraken_report) +
             "--db {} --threads {} --paired ".format(kraken_db_1, args.threads) +
             "--f-threshold {} --keep-unmapped-reads ".format(args.t1) +
@@ -277,7 +277,7 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
         else:
             check_kraken_db(kraken_db_2, log_file_pipeline)
             shell_output = subprocess.check_output(
-                "/usr/bin/time -v {} --use-names ".format(args.kraken_path) +
+                "{} --use-names ".format(args.kraken_path) +
                 "--report {} ".format(final_level_kraken_report) +
                 "--db {} --threads {} --paired ".format(kraken_db_2, args.threads) +
                 "--f-threshold {} ".format(t_2) +
@@ -316,7 +316,7 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
     if args.docker:
         vifi_docker_arg = ""
 
-    command = "/usr/bin/time -v python {} ".format(args.vifi_path) +\
+    command = "python {} ".format(args.vifi_path) +\
               "{}".format(vifi_docker_arg) +\
               "-f {} -r {} ".format(vifi_input_fq_1, vifi_input_fq_2) +\
               "-o {} --virus {} ".format(args.output_dir, virus) +\
@@ -450,7 +450,7 @@ def run_pipeline(args):
             if args.docker:
                 bwa_filter_file = "/home/fastvifi/" + bwa_filter_file
 
-            shell_output = subprocess.check_output("/usr/bin/time -v python {} {} {} {} {} &>> output".format(
+            shell_output = subprocess.check_output("python {} {} {} {} {} &>> output".format(
                 bwa_filter_file,
                 args.input_file, args.output_dir, human_chr_list, bwa_filtered_filename_prefix), shell=True)
             log_file_pipeline_shell.write(shell_output)
