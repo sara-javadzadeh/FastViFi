@@ -450,7 +450,7 @@ def run_pipeline(args):
             if args.docker:
                 bwa_filter_file = "/home/fastvifi/" + bwa_filter_file
 
-            shell_output = subprocess.check_output("python {} {} {} {} {} &>> output".format(
+            shell_output = subprocess.check_output("python {} {} {} {} {}".format(
                 bwa_filter_file,
                 args.input_file, args.output_dir, human_chr_list, bwa_filtered_filename_prefix), shell=True)
             log_file_pipeline_shell.write(shell_output)

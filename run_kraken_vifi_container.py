@@ -68,6 +68,7 @@ def call_fastvifi_pipeline(args):
             "--read-only -v {}:/home/repo/data/ ".format(vifi_viral_data_path) + \
             "-v {}/run_kraken_vifi_pipeline.py:/home/fastvifi/run_kraken_vifi_pipeline.py ".format(os.getcwd()) + \
             "-v {}:/home/output ".format(args.output_dir) + \
+            "--user $(id -u):$(id -g) " + \
             "{} ".format(docker_image_tag) + \
             "python /home/fastvifi/run_kraken_vifi_pipeline.py " + \
             "--kraken-path /home/kraken2/kraken2 " + \
