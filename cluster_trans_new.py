@@ -7,6 +7,8 @@ import argparse
 from time import clock
 from collections import defaultdict, Counter
 import re
+from functools import cmp_to_key
+
 
 import hg19util as hg
 
@@ -170,8 +172,11 @@ for a in bamFile:
 if caln is not None and (a.pos > caln.pos + 300 or caln.tid != a.tid) and clean_genomic_cluster(clist, min_support):
         clusterList.append(clist)
 
-clusterList.sort(key=lambda x: \
-    hg.interval(bamFile.getrname(x[0].tid), x[0].pos, x[-1].pos + x[-1].infer_query_length()))
+#clusterList.sort(key=lambda x: \
+#    hg.interval(bamFile.getrname(x[0].tid), x[0].pos, x[-1].pos + x[-1].infer_query_length()))
+clusterList.sort(key=cmp_to_key(lambda x, y: \
+        hg.interval(bamFile.getrname(x[0].tid), x[0].pos, x[-1].pos + x[-1].infer_query_length()) > \
+        hg.interval(bamFile.getrname(y[0].tid), y[0].pos, y[-1].pos + y[-1].infer_query_length())))
 
 vsuper = {v: set([v2 for v2 in vreads if v2 != v and len(vreads[v]) < len(vreads[v2]) and vreads[v].issubset(vreads[v2])]) for v in vreads}
 vequaldict = {}
@@ -244,8 +249,13 @@ for ci in range(len(clusterList)):
                         cInList.append([bamFile.getrname(c2[0].tid), c2[0].pos, c2[-1].pos+c2[-1].infer_query_length()])
         ls = largest_clean_subset(c)
         cs = (len([a for a in c if not a.is_reverse]), len([a for a in c if a.is_reverse]))
-        vplist = [(v, len(vcount[v]), min([a2.pos for a2 in vcount[v] if a2.is_reverse]+[100000000000]), max([-1]+[a2.pos+(a2.infer_query_length() if a2.infer_query_length() is not None else a2.qlen) for a2 in vcount[v] if not a2.is_reverse])) for v in vrep]
-        vplist.sort(key=lambda x, y: y[1] - x[1])
+        vplist = [(v, \
+                   len(vcount[v]), \
+                   min([a2.pos for a2 in vcount[v] if a2.is_reverse]+[100000000000]), \
+                   max([-1]+[a2.pos+(a2.infer_query_length() if a2.infer_query_length() is not None else a2.qlen) for a2 in vcount[v] if not a2.is_reverse])) \
+                   for v in vrep]
+        #vplist.sort(key=lambda x, y: y[1] - x[1])
+        vplist.sort(key=cmp_to_key(lambda x, y: y[1] - x[1]))
         frbin[cs] += 1
         outFile.write("##==========================================================================================================================================================================================================================\n")
         outFile.write('\t'.join(map(str, [bamFile.getrname(c[0].tid), c[0].pos, c[-1].pos + c[-1].infer_query_length(), len(set([a.qname for a in c])), cs[0], cs[1]])) + '\n')

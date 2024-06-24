@@ -122,6 +122,9 @@ The expected behaviour for FastViFi is to filter out the human originated reads,
 - The file `output_hpv.fixed.trans.bam` stores the reads where one mate is mapped to the human genome and the other is mapped to viral genomes. Run `samtools view output_hpv.fixed.trans.bam` and look for 8 entries (4 paired end reads) that represent the presence of hybrid human-viral DNA.
 - The file `output_hpv.clusters.txt` stores all the hybrid human-viral DNA/RNA junctions clusters. There should be a single cluster with the 4 paired end reads.
 
+## Interpretting the Outputs
+FastViFi output results e.g. `output_hpv.clusters.txt` and `output_hpv.fixed.trans.bam` should be manually checked further to ensure that the integration site is valid. One flag that helps prevent incorrect integration sites is `--mask-low-complexity` together with `--low-complexity-threshold`. The first flag enables a filter which discards reads that are low complexity. Therefore, false integration sites due to low complexity sequence will be automatically discarded. `--low-complexity-threshold` sets a minimum threshold on ratio of low complexity region in a read to the read length. Paired end reads where one mate is considered low complexity will be both discarded.
+
 ## Custom Kraken datasets
 
 Touild Kraken datasets based on the **sample-level** or **read-level** configurations on FastViFi, the following datasets are necessary:

@@ -7,6 +7,7 @@ from shutil import copyfile
 import subprocess
 import time
 import pysam
+from Bio import SeqIO
 
 virus_detection_mode = ('sample-level',
                         'sensitive-level')
@@ -91,6 +92,42 @@ def remove_kraken_intermediate_files_if_exist(keep_intermediate_files_flag,
     if keep_intermediate_files_flag:
         remove_if_exists([first_level_kraken_output, final_level_kraken_output,
                          first_level_kraken_report, final_level_kraken_report])
+
+def get_low_complexity_ids(input_fq_file, output_fa_file,
+                           low_complexity_threshold,
+                           log_file_pipeline_shell):
+    low_complexity_ids = []
+    all_ids = []
+    command = "seqtk seq -a {} | dustmasker -outfmt fasta ".format(input_fq_file) + \
+               "-out {} ".format(output_fa_file)
+    shell_output = subprocess.check_output(
+    command, shell=True)
+    log_file_pipeline_shell.write(shell_output)
+    sequences = SeqIO.parse(open(output_fa_file), 'fasta')
+    #with open(output_fa_file, "r") as low_complexity_file:
+    for read in sequences:
+        name, sequence = read.id, read.seq
+        all_ids.append(name)
+        read_len = len(sequence)
+        low_complexity_len = len([1 for c in sequence if c.islower()])
+        if float(low_complexity_len) / read_len >= low_complexity_threshold:
+            low_complexity_ids.append(name)
+        '''current_seq_id = None
+        for line in low_complexity_file.readlines():
+            if line.startswith(">"):
+                current_seq_id = line.strip()[1:]
+                all_ids.append(current_seq_id)
+                continue
+            else:
+                # Line indicates an interval with low complexity regions
+                sequence = line.strip()
+                # Get the total length of the read
+                read_len = len(sequence)
+                # Get the length of the low complexity region
+                low_complexity_len = len([1 for c in sequence if c.islower()])
+                if float(low_complexity_len) / read_len > args.low_complexity_threshold:
+                    low_complexity_ids.append(current_seq_id)'''
+    return low_complexity_ids, all_ids
 
 def parse_input_args(docker_run=False):
     # Some arguments are required for a regular run, but not required when running on Docker.
@@ -200,6 +237,15 @@ def parse_input_args(docker_run=False):
     filtering_args.add_argument('--min-hybrid-support', type=int, default=4,
         help="Minimum number of supporting paired end reads to report a a hybrid junction.")
 
+    filtering_args.add_argument("--mask-low-complexity", action="store_true",
+        help="If enabled, masks low complexity reads based on the Dustmasker tool and " + \
+             "according to the --low-complexity-threshold." + \
+             "Low complexity reads are masked after running Kraken and before running ViFi")
+    filtering_args.add_argument("--low-complexity-threshold", type=float, default=0.5,
+        help="Discard reads when the ratio of the low-complexity interval and read length " + \
+             "is at least the value set here. " + \
+             "Only used when --mask-low-complexity is set. Otherwise, it is ignored [0.5]")
+
     dev_args = parser.add_argument_group('Arguments related to development of FastViFi')
     dev_args.add_argument('--gt-viral-path', default=None,
         help='The path to the file containing the read ids for the ground truth viral reads. ' +
@@ -307,6 +353,65 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
             vifi_input_fq_2 = bwa_filtered_fq_filename_2
             #copyfile(bwa_filtered_fq_filename_1, vifi_input_fq_1)
             #copyfile(bwa_filtered_fq_filename_2, vifi_input_fq_2)
+
+    # Mask low complexity reads
+    if args.mask_low_complexity:
+        print("------Masking low complexity")
+        start_timer = time.time()
+
+        low_complexity_fa_1 = os.path.join(args.output_dir, "low_complexity_1.fa")
+        low_complexity_fa_2 = os.path.join(args.output_dir, "low_complexity_2.fa")
+        low_complexity_ids, all_ids = [], []
+        low_comp_1, all_ids_1 = get_low_complexity_ids(
+                                input_fq_file=vifi_input_fq_1,
+                                output_fa_file=low_complexity_fa_1,
+                                low_complexity_threshold=args.low_complexity_threshold,
+                                log_file_pipeline_shell=log_file_pipeline_shell)
+        low_comp_2, all_ids_2 = get_low_complexity_ids(
+                                input_fq_file=vifi_input_fq_2,
+                                output_fa_file=low_complexity_fa_2,
+                                low_complexity_threshold=args.low_complexity_threshold,
+                                log_file_pipeline_shell=log_file_pipeline_shell)
+        # Add read ids for mates of the low complexity regions so that both are removed.
+        low_complexity_ids = low_comp_1 + \
+                             [read_id.replace("/1", "/2") for read_id in low_comp_1] + \
+                             low_comp_2 + \
+                             [read_id.replace("/2", "/1") for read_id in low_comp_2]
+        low_complexity_ids = list(set(low_complexity_ids))
+        all_ids = all_ids_1 + all_ids_2
+
+        print("------ len of all ids", len(all_ids))
+        print("------ len of low complexity ids", len(low_complexity_ids))
+        # Create a list of read ids we would like to keep
+        kept_ids = [sid for sid in all_ids if sid not in low_complexity_ids]
+        # Create a file with the list of read ids with low compexity
+        low_complexity_ids_filename = os.path.join(args.output_dir, "low_complexity_ids.list")
+        vifi_input_fq_masked_1 = os.path.join(args.output_dir, "vifi_input_masked_1.fq")
+        vifi_input_fq_masked_2 = os.path.join(args.output_dir, "vifi_input_masked_2.fq")
+        with open(low_complexity_ids_filename, "w+") as low_complexity_ids_file:
+            for read_id in kept_ids:
+                low_complexity_ids_file.write(read_id + os.linesep)
+        # Filter low complexity reads based on the list of read ids created above
+        shell_output = subprocess.check_output(
+                        "seqtk subseq {} {} > {}".format(
+                           vifi_input_fq_1,
+                           low_complexity_ids_filename,
+                           vifi_input_fq_masked_1) ,
+                        shell=True)
+        log_file_pipeline_shell.write(shell_output)
+        shell_output = subprocess.check_output(
+                        "seqtk subseq {} {} > {}".format(
+                           vifi_input_fq_2,
+                           low_complexity_ids_filename,
+                           vifi_input_fq_masked_2) ,
+                        shell=True)
+        log_file_pipeline_shell.write(shell_output)
+
+        vifi_input_fq_1 = vifi_input_fq_masked_1
+        vifi_input_fq_2 = vifi_input_fq_masked_2
+
+        log_file_pipeline.write('Masking low complexity reads completed in {} time'.format(
+                             get_formatted_time(start_timer)))
 
     start_timer = time.time()
 

@@ -1,11 +1,11 @@
 FROM ubuntu:18.04
 
-ARG FASTVIFIVER="1.0"
-ARG FASTVIFIUSER="fastvifi"
-ARG FASTVIFIGROUP="fastvifi_group"
+#ARG FASTVIFIUSER
+#ARG FASTVIFIGROUP
+#ARG FASTVIFIVER="1.0"
 
 
-LABEL dockerfile.version="1.2"
+LABEL dockerfile.version="1.2.2"
 LABEL software="FastViFi"
 LABEL software.version="1"
 LABEL description="Tool to detect viral presence and hybrid DNA/RNA junctions from NGS data."
@@ -15,21 +15,21 @@ LABEL maintainer="Sara Javadzadeh"
 LABEL maintainer.email="saraj@eng.ucsd.edu"
 
 
-RUN groupadd $FASTVIFIGROUP && \
- useradd --home-dir /home -g $FASTVIFIGROUP $FASTVIFIUSER && \
- chown -R ${FASTVIFIUSER}:${FASTVIFIGROUP} /home
+#RUN groupadd $FASTVIFIGROUP && \
+# useradd --home-dir /home -g $FASTVIFIGROUP $FASTVIFIUSER && \
+# chown -R ${FASTVIFIUSER}:${FASTVIFIGROUP} /home
 
-USER $FASTVIFIUSER
+#USER $FASTVIFIUSER
 
 RUN mkdir /home/fastvifi && \
  mkdir /home/input && \
  mkdir /home/output
 
-USER root
+#USER root
 
-ENV TZ=USA/NY
+#ENV TZ=USA/NY
 ENV DEBIAN_FRONTEND=noninteractive
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+#RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 #Download libraries for AA
 RUN apt-get update
 RUN apt-get install -y
@@ -39,10 +39,13 @@ RUN update-alternatives --install /usr/local/bin/python python /usr/bin/python3.
 RUN update-alternatives --install /usr/local/bin/python python /usr/bin/python3.6 2;
 RUN pip3 install pysam google-cloud
 RUN pip3 install numpy scipy matplotlib
-RUN apt-get install bwa
+RUN pip3 install biopython
 RUN apt-get install -y make
 RUN apt-get install -y perl
 RUN apt-get install -y cpanminus
+RUN apt-get install -y bwa
+RUN apt-get install -y ncbi-blast+
+RUN apt-get install -y seqtk
 
 #Set up gcloud
 RUN apt-get install lsb-release curl -y
@@ -100,14 +103,14 @@ RUN ./configure &&\
 
 WORKDIR /home/
 
-USER $FASTVIFIUSER
+#USER $FASTVIFIUSER
 
 # Download ViFi.
 RUN cd /home &&\
  git clone https://github.com/sara-javadzadeh/ViFi.git
 
 
-USER root
+#USER root
 
 # Install dependencies and cleanup apt.
 RUN apt-get update && apt-get -y --no-install-recommends install \
@@ -121,11 +124,11 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
  cpanminus && \
  rm -rf /var/lib/apt/lists/* && apt-get autoclean
 
-USER $FASTVIFIUSER
+#USER $FASTVIFIUSER
 # Perl module required for kraken2-build.
 RUN cpanm Getopt::Std
 
-USER $FASTVIFIUSER
+#USER $FASTVIFIUSER
 # Download Kraken from GitHub and Install.
 RUN cd /home && \
  git clone https://github.com/sara-javadzadeh/kraken2.git && \
@@ -143,17 +146,17 @@ RUN cd /home/fastvifi && \
  git fetch && \
  git checkout main
 
-USER root
+#USER root
 
-RUN chown --changes --no-dereference --recursive \
-          ${FASTVIFIUSER}:${FASTVIFIGROUP} \
-        /home/fastvifi \
-        /home/input \
-        /home/data \
-        /home/kraken2 \
-        /home/kraken2-db
+#RUN chown --changes --no-dereference --recursive \
+#          ${FASTVIFIUSER}:${FASTVIFIGROUP} \
+#        /home/fastvifi \
+#        /home/input \
+#        /home/data \
+#        /home/kraken2 \
+#        /home/kraken2-db
 
 
-USER $FASTVIFIUSER
+#USER $FASTVIFIUSER
 
 WORKDIR /home/fastvifi/FastViFi

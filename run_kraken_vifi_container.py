@@ -22,11 +22,11 @@ def call_fastvifi_pipeline(args):
     kraken_db_path = args.kraken_db_path
     vifi_hg_data_path = os.path.join(args.vifi_human_ref_dir)
     vifi_viral_data_path = os.path.join(args.vifi_viral_ref_dir)
-    docker_image_tag = "sarajava/fastvifi:v1.2.1"
+    docker_image_tag = "sarajava/fastvifi:v1.2.2"
     # Command for Singularity
     if args.singularity:
         # Running as a user
-        singularity_image_tag = "fastvifi_v1.2.1.sif"
+        singularity_image_tag = "fastvifi_v1.2.2.sif"
         docker_image_tag = " docker://{}".format(docker_image_tag)
         if not os.path.exists(singularity_image_tag):
             # Build a singularity .sif file from the docker image, if doesn't exist.
@@ -57,7 +57,7 @@ def call_fastvifi_pipeline(args):
             "--min-hybrid-support {} ".format(args.min_hybrid_support) + \
             "--docker "
     # Command for Docker
-    if args.docker:
+    elif args.docker:
         command = "docker run --rm " + \
         "--read-only -v {}:/home/input/{} ".format(args.input_file, os.path.basename(args.input_file))
         if args.input_file_2 is not None:
@@ -78,6 +78,9 @@ def call_fastvifi_pipeline(args):
             "--kraken-db-path /home/kraken2-db " + \
             "--min-hybrid-support {} ".format(args.min_hybrid_support) + \
             "--docker "
+    else:
+        print("Error: When running FastViFi by container, either --docker or --singularity should be used.")
+        exit(1)
     if args.virus is None:
         print("Error: At least one virus should be provided with the --virus argument.")
         exit(1)
@@ -90,9 +93,13 @@ def call_fastvifi_pipeline(args):
     if args.skip_bwa_filter:
         command += " --skip-bwa-filter "
     if args.threads is not None:
-        command += " --threads {}".format(args.threads)
+        command += " --threads {} ".format(args.threads)
     if args.skip_kraken_filters is not None:
-        command += " --skip-kraken-filters"
+        command += " --skip-kraken-filters "
+    if args.mask_low_complexity is True:
+        command += " --mask-low-complexity "
+    if args.low_complexity_threshold is not None:
+        command += " --low-complexity-threshold {} ".format(args.low_complexity_threshold)
 
     print(command)
     shell_output = subprocess.check_output(
