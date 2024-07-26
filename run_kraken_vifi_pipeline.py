@@ -195,6 +195,11 @@ def parse_input_args(docker_run=False):
         help='Keep the FASTQ files filtered for each filtering step as well as kraken output and report [False].')
     steps_args.add_argument('--skip-bwa-filter', action="store_true", default=False,
         help='Skip the BWA filtering on aligned reads [False]')
+    steps_args.add_argument('--memory-efficient-bwa-filter', action="store_true", default=False,
+        help='Runs the BWA filtering on aligned reads in a memory efficient manner.\n' + \
+        ' If enabled, samtools is called to stream the input file instead of a custom python script.\n' +\
+        ' Currently only functional for the when human chromosomes start with "chr" in the bam file.\n' +\
+        ' With this option debugging might be more difficult. [False]')
     steps_args.add_argument('--skip-kraken-filters', action="store_true", default=False,
         help='Skip the Kraken filtering steps and direct all input to ViFi.\n' +
              'Using this flag drastically increases the runtime [False].')
@@ -551,18 +556,46 @@ def run_pipeline(args):
     if not args.skip_bwa_filter:
         if is_aligned_reads(args.input_file):
             log_file_pipeline.write("Filtering reads from input file {}".format(args.input_file) + os.linesep)
-            bwa_filter_file = "filter_reads_bwa_efficient.py"
-            if args.docker:
-                bwa_filter_file = "/home/fastvifi/" + bwa_filter_file
+            # The python script works correctly, but takes too much memory.
+            # Therefore, for larger input bam files, samtools should be called.
+            if not args.memory_efficient_bwa_filter:
+                bwa_filter_file = "filter_reads_bwa_efficient.py"
+                if args.docker:
+                    bwa_filter_file = "/home/fastvifi/" + bwa_filter_file
 
-            shell_output = subprocess.check_output("python {} {} {} {} {}".format(
-                bwa_filter_file,
-                args.input_file, args.output_dir, human_chr_list, bwa_filtered_filename_prefix), shell=True)
-            log_file_pipeline_shell.write(shell_output)
+                shell_output = subprocess.check_output("python {} {} {} {} {}".format(
+                    bwa_filter_file,
+                    args.input_file, args.output_dir, human_chr_list, bwa_filtered_filename_prefix), shell=True)
+                log_file_pipeline_shell.write(shell_output)
+            else:
+                # The samtools alternative.
+                samfile_bwa_filter = os.path.join(args.output_dir, bwa_filtered_filename_prefix + ".sam")
+                bamfile_bwa_filter = os.path.join(args.output_dir, bwa_filtered_filename_prefix + ".bam")
+                # Extract reads using samtools and awk.
+                command = "samtools view -h {} ".format(
+                                args.input_file) + \
+                        """| awk -e '{if(substr($1,1,1) == "@") { print $0} """ + \
+                        """else {if (and($2,15) ==1 && ($3 !~ "chr*" || $7 !~ "chr*")) print $0}}' > """ + \
+                        "{}".format(samfile_bwa_filter)
+                print("samtools command ", command)
+                shell_output = subprocess.check_output(command, shell=True)
+                log_file_pipeline_shell.write(shell_output)
 
+                # Convert the sam file to fastq files
+                command = "samtools view -bS {} > {} ; ".format(
+                            samfile_bwa_filter,
+                            bamfile_bwa_filter) + \
+                " bamToFastq -fq2 {} -i {} -fq {}".format(
+                bwa_filtered_fq_filename_2,
+                bamfile_bwa_filter,
+                bwa_filtered_fq_filename_1)
+                print("bamtofastq command ", command)
+                shell_output = subprocess.check_output(command, shell=True)
+                log_file_pipeline_shell.write(shell_output)
             num_lines = sum([1 for line in open(bwa_filtered_fq_filename_1)])
+
             log_file_pipeline.write('In total {} paired end reads passed bwa alignment filtering in {} time'.format(
-                num_lines/4, get_formatted_time(start_timer)) + os.linesep)
+                    num_lines/4, get_formatted_time(start_timer)) + os.linesep)
             log_time(log_file_pipeline)
 
         else:
