@@ -264,6 +264,8 @@ def parse_input_args(docker_run=False):
     running_args = parser.add_argument_group('Running arguments')
     running_args.add_argument("--threads", type=int, default=1,
         help='Number of threads to use when running Kraken and ViFi [1]')
+    running_args.add_argument("--samtools-mem", type=str, default="2G",
+        help='Max memory in the samtools sort steps in ViFi [2G]')
     running_args.add_argument('--verbose', '-v', action='store_true',
         help='Print verbose debugging information.')
 
@@ -431,6 +433,7 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
               "-f {} -r {} ".format(vifi_input_fq_1, vifi_input_fq_2) +\
               "-o {} --virus {} ".format(args.output_dir, virus) +\
               "-c {} ".format(args.threads) +\
+              "--mem {} ".format(args.samtools_mem) +\
               "--prefix {} ".format(vifi_output_prefix) + \
               "--min-support {} ".format(args.min_hybrid_support)
     if not args.skip_vifi:
@@ -569,27 +572,23 @@ def run_pipeline(args):
                 log_file_pipeline_shell.write(shell_output)
             else:
                 # The samtools alternative.
+                bwa_filter_file = "run_alignment_filter.sh"
+                if args.docker:
+                    bwa_filter_file = "/home/fastvifi/" + bwa_filter_file
+                prefix_bwa_filter = os.path.join(args.output_dir, bwa_filtered_filename_prefix)
                 samfile_bwa_filter = os.path.join(args.output_dir, bwa_filtered_filename_prefix + ".sam")
                 bamfile_bwa_filter = os.path.join(args.output_dir, bwa_filtered_filename_prefix + ".bam")
                 # Extract reads using samtools and awk.
-                command = "samtools view -h {} ".format(
-                                args.input_file) + \
-                        """| awk -e '{if(substr($1,1,1) == "@") { print $0} """ + \
-                        """else {if (and($2,15) ==1 && ($3 !~ "chr*" || $7 !~ "chr*")) print $0}}' > """ + \
-                        "{}".format(samfile_bwa_filter)
-                print("samtools command ", command)
+                command = "bash {} {} {}".format(bwa_filter_file, args.input_file, prefix_bwa_filter)
                 shell_output = subprocess.check_output(command, shell=True)
                 log_file_pipeline_shell.write(shell_output)
 
                 # Convert the sam file to fastq files
-                command = "samtools view -bS {} > {} ; ".format(
-                            samfile_bwa_filter,
-                            bamfile_bwa_filter) + \
-                " bamToFastq -fq2 {} -i {} -fq {}".format(
+                #command = " bamToFastq -fq2 {} -i {} -fq {}".format(
+                command = "samtools fastq -N -1 {} -2 {} {}".format(
+                bwa_filtered_fq_filename_1,
                 bwa_filtered_fq_filename_2,
-                bamfile_bwa_filter,
-                bwa_filtered_fq_filename_1)
-                print("bamtofastq command ", command)
+                samfile_bwa_filter)
                 shell_output = subprocess.check_output(command, shell=True)
                 log_file_pipeline_shell.write(shell_output)
             num_lines = sum([1 for line in open(bwa_filtered_fq_filename_1)])

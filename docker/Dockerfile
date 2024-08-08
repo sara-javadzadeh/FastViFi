@@ -47,6 +47,7 @@ RUN apt-get install -y bwa
 RUN apt-get install -y ncbi-blast+
 RUN apt-get install -y seqtk
 
+
 #Set up gcloud
 RUN apt-get install lsb-release curl -y
 RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
@@ -71,6 +72,8 @@ RUN python2.7 -m pip install pysam
 # Perl Libs
 RUN cpanm PerlIO::gzip
 RUN apt-get install time
+RUN apt-get install gawk
+
 ENV AA_DATA_REPO="/home/data_repo"
 ENV PATH="/home/bin:${PATH}"
 ENV PYTHONPATH="/home/ViFi/scripts"
@@ -105,6 +108,7 @@ WORKDIR /home/
 
 #USER $FASTVIFIUSER
 
+ENV NO_CACHE_VARIABLE="1"
 # Download ViFi.
 RUN cd /home &&\
  git clone https://github.com/sara-javadzadeh/ViFi.git
