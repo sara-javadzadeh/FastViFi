@@ -58,6 +58,8 @@ def check_arguments_validity(args):
     elif (not is_aligned_reads(args.input_file)) and args.input_file_2 is None:
         message = ("Error: If the input file is not a BAM/SAM file, "
             "two FASTQ files should be provided using --input-file and input-file-2")
+    if not args.samtools_mem.endswith("G"):
+        message = "Error: Argument --samtools-mem should end with the letter G to denote gigabytes e.g. 2G (default)."
     if message is not None:
         print(message)
         exit(1)
@@ -471,7 +473,7 @@ def run_kraken_vifi(virus, args, log_file_pipeline, log_file_pipeline_shell,
 
         # Remove all ViFi files if no viral read was found.
         # This is a helpful feature to reduce output files when searching among all viral databases.
-        if num_viral_reads == 0 and not args.keep_all_virus_files:
+        if num_viral_reads == 0 and not args.keep_all_virus_files and not args.keep_intermediate_files:
             log_file_pipeline.write("Removing Vifi and kraken files for virus {} as no viral reads were detected".format(virus) + os.linesep)
             remove_vifi_output_files(output_dir=args.output_dir, prefix=vifi_output_prefix)
             remove_if_exists([vifi_input_fq_1, vifi_input_fq_2,
