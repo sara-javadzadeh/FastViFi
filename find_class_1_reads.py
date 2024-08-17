@@ -1,8 +1,10 @@
+import argparse
 import pysam
 import os
 import sys
 import time
 from collections import defaultdict
+import argparse
 
 class HybridRead:
     def __init__(self, query_name, human_chr_names):
@@ -30,6 +32,24 @@ class HybridRead:
             return 2
         return 0
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="This script extracts class 1 reads. " + \
+        "Class 1 are single hybrid reads where the read is both aligned to the human and viral genomes " + \
+        "which is captured based on primary and supplementary alignments. " + \
+          "Two text files are generated with class 1 single reads, depending on the read being the first or second in the pair.\n")
+    parser.add_argument("--input",
+                        type=str, required=True,
+                        help="input bam/sam file where class 1 is to be extracted")
+    parser.add_argument("--output-dir",
+                        type=str, required=True,
+                        help="output directory where output files will be written into.")
+    parser.add_argument("--human-chr-list",
+                        type=str, required=True,
+                        help="a file with each line representing human chromosome list. " + \
+                        "The list is used to identify human and non-human (i.e. viral) alignment.")
+    args = parser.parse_args()
+    return args
 
 def get_human_chr_list(filename):
     human_chr_names = {}
@@ -81,17 +101,13 @@ def read_input_file(input_bamfile, human_chr_names_filename):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: {} <path to input bam file> <path to output directory> <filename with human ref names in BAM file>\n".format(sys.argv[0]) +
-              "Two Fastq files for paired end reads are created.\n" +
-              "Note: human chromosomes reference names are assumed to be in the format "+
-              "of chr1-chr22, chrX, chrY, chrM. If that is not the case for the BAM file, " +
-              "update the function get_human_chr_list() within the code. Easier way to " +
-              "feed in the human chromosome reference names to be provided in the future.")
-        exit(1)
-    input_filename = sys.argv[1]
-    output_dir = sys.argv[2]
-    human_chr_names_filename = sys.argv[3]
+    args = parse_arguments()
+    input_filename = args.input
+    output_dir = args.output_dir
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    human_chr_names_filename = args.human_chr_list
+
     print("Finding hybrid single reads reads from {}".format(input_filename))
     if input_filename.endswith(".bam"):
         input_bamfile = pysam.AlignmentFile(input_filename, "rb")
@@ -106,8 +122,8 @@ if __name__ == "__main__":
 
     hybrid_single_reads_1, hybrid_single_reads_2 = read_input_file(input_bamfile, human_chr_names_filename)
 
-    output_filename_1 = os.path.join(output_dir, "hybrid_single_read_ids_1.txt")
-    output_filename_2 = os.path.join(output_dir, "hybrid_single_read_ids_2.txt")
+    output_filename_1 = os.path.join(output_dir, "class_1_read_ids_1.txt")
+    output_filename_2 = os.path.join(output_dir, "class_1_read_ids_2.txt")
 
     # Write single hybrid reads where the hybrid read was first mate
     with open(output_filename_1, "w+") as output_file:
