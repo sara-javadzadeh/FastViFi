@@ -11,11 +11,11 @@ class Cluster:
         self.reads_class_1 = []
         self.reads_class_2 = []
 
-    def add_read_class_1(self, name, chrom, position, umi):
-        self.reads_class_1.append((name, chrom, int(position), umi))
+    def add_read_class_1(self, name, chrom, position, is_first_read, umi):
+        self.reads_class_1.append((name, chrom, int(position), is_first_read, umi))
 
-    def add_read_class_2(self, name, chrom, position, umi):
-        self.reads_class_2.append((name, chrom, int(position), umi))
+    def add_read_class_2(self, name, chrom, position, is_first_read, umi):
+        self.reads_class_2.append((name, chrom, int(position), is_first_read, umi))
 
     def get_supporting_reads(self):
         return len(self.reads_class_1) + len(self.reads_class_2)
@@ -121,7 +121,7 @@ def get_reads(filename):
     return reads, id_to_read
 
 def get_umi(read_id, id_to_reads, verbose=False):
-    #TODO: fix the issue with UMI
+    #TODO: Extract UMI from read. Why are read optional flags not present?
     reads = id_to_reads[read_id]
     if verbose:
         print("get tags")
@@ -153,10 +153,8 @@ def extract_class_2_clusters(cluster_filename, id_to_reads):
             current_cluster.add_read_class_2(name=read_id,
                                             chrom=chrom,
                                             position=position,
+                                            is_first_read=read_1,
                                             umi=umi)
-            print("read class 2 added")
-    print("len read class 2 ", len(clusters[0].reads_class_2))
-
     return clusters
 
 def find_overlaps(class_1_reads, id_to_reads, clusters):
@@ -180,26 +178,31 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
     return clusters, unmerged_class_1_reads
 
 def get_read_string_in_cluster(read, read_class):
-    name, chrom, position, umi = read
-    return "{rclass}\t{rid}\t{chrom}\t{position}\t{umi}\n".format(
+    name, chrom, position, is_first_read, umi = read
+    cigar = "-"
+    return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\n".format(
             rclass=read_class,
             rid=name,
             chrom=chrom,
             position=position,
-            umi=umi)
+            is_first_read=is_first_read,
+            umi=umi,
+            cigar=cigar)
 
 def get_read_string(read, id_to_reads, read_class):
-    return "{rclass}\t{rid}\t{chrom}\t{position}\t{umi}\n".format(
+    return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\n".format(
             rclass=read_class,
             rid=read.query_name,
             chrom=read.reference_name,
             position=read.query_alignment_start,
-            umi=get_umi(read.query_name, id_to_reads))
+            is_first_read=read.is_read1,
+            umi=get_umi(read.query_name, id_to_reads),
+            cigar=read.cigarstring)
 
 def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
     clusters = sorted(clusters, key=lambda cluster: cluster.get_supporting_reads(), reverse=True)
     out_file = open(os.path.join(output_dir, "clusters_summary.txt"), "w+")
-    out_file.write("### Clusters where both/either class 1 and class 2 reads are present\n")
+    out_file.write("############################### Clusters where both/either class 1 and class 2 reads are present\n")
     out_file.write("#chrom\tstart\tend\tnum_class_1_reads\tnum_class_2_reads\n")
     # First write clusters where both class 1 and class 2 are present
     for cluster in clusters:
@@ -210,15 +213,19 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
                         num_c_1=len(cluster.reads_class_1),
                         num_c_2=len(cluster.reads_class_2),
                         ))
-        out_file.write("#read_class\tread_id\tchr\tposition\tUMI\n")
+        out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\n")
         for read in cluster.reads_class_1:
             out_file.write(get_read_string(read, "class_1"))
         for read in cluster.reads_class_2:
             out_file.write(get_read_string_in_cluster(read, "class_2"))
 
-    out_file.write("### Remaining class 1 reads\n")
+    out_file.write("############################### Remaining class 1 reads separated by read ids. Multiple alignment for each read might be present.\n")
+    current_read = None
     for read in unmerged_class_1_reads:
+        if current_read and current_read != read.query_name:
+            out_file.write("\n")
         out_file.write(get_read_string(read, id_to_reads, "class_1"))
+        current_read = read.query_name
 
     out_file.close()
 
@@ -239,6 +246,7 @@ if __name__ == "__main__":
                                           output_dir=args.output_dir)
     # Extract actual reads
     class_1_reads, id_to_read_1 = get_reads(class_1_filename)
+    class_1_reads = sorted(class_1_reads, key=lambda x: (x.query_name, x.reference_name))
     class_2_reads, id_to_read_2 = get_reads(args.fastvifi_bam)
     all_reads = class_1_reads + class_2_reads
     id_to_reads = id_to_read_1.copy()
@@ -255,11 +263,13 @@ if __name__ == "__main__":
             class_2_filename=args.fastvifi_bam,
             output_dir=args.output_dir)
 
+    # Find clusters where both classes of read are present.
     clusters, unmerged_class_1_reads = find_overlaps(
             id_to_reads=id_to_read_1,
             class_1_reads=class_1_reads,
             clusters=clusters)
-    #TODO: add second alignment and cigar for class 1 reads
+
+    # Write a summary of the results.
     write_results(clusters=clusters,
                 unmerged_class_1_reads=unmerged_class_1_reads,
                 id_to_reads=id_to_reads,
