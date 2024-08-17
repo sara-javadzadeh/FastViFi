@@ -120,16 +120,22 @@ def get_reads(filename):
             id_to_read[read.query_name] = []
     return reads, id_to_read
 
-def get_umi(read_id, id_to_reads, verbose=False):
-    #TODO: Extract UMI from read. Why are read optional flags not present?
+def get_umi(read_id, id_to_reads):
+    # Assuming the umi is the same for both reads in the pair.
     reads = id_to_reads[read_id]
-    if verbose:
-        print("get tags")
-        print(reads[0].get_tags(with_value_type=True))
+    umi = ""
+    for tag_tuple in reads[0].get_tags(with_value_type=True):
+        tag = tag_tuple[0]
+        if tag == "CB:Z":
+            umi += tag_tuple[1]
+        if tag == "UB:Z":
+            umi += tag_tuple[1]
     #print("get tag")
     #print(reads[0].get_tag("UB", with_value_type=True))
     # CB:Z: + UB:Z:
-    return "-"
+    if len(umi) == 0:
+        umi = "-"
+    return umi
 
 def extract_class_2_clusters(cluster_filename, id_to_reads):
     cluster_file = open(cluster_filename, "r")
