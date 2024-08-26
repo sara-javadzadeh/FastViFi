@@ -11,11 +11,11 @@ class Cluster:
         self.reads_class_1 = []
         self.reads_class_2 = []
 
-    def add_read_class_1(self, name, chrom, position, is_first_read, umi):
-        self.reads_class_1.append((name, chrom, int(position), is_first_read, umi))
+    def add_read_class_1(self, name, chrom, position, is_first_read, umi, cigar):
+        self.reads_class_1.append((name, chrom, int(position), is_first_read, umi, cigar))
 
-    def add_read_class_2(self, name, chrom, position, is_first_read, umi):
-        self.reads_class_2.append((name, chrom, int(position), is_first_read, umi))
+    def add_read_class_2(self, name, chrom, position, is_first_read, umi, cigar):
+        self.reads_class_2.append((name, chrom, int(position), is_first_read, umi, cigar))
 
     def get_supporting_reads(self):
         return len(self.reads_class_1) + len(self.reads_class_2)
@@ -65,7 +65,6 @@ def combine_bam_files(class_1_filename, class_2_filename, output_dir):
     return combined_filename
 
 def extract_class_1_reads(input_bam, class_1_read_ids_1, class_1_read_ids_2, logfile, output_dir):
-    #samtools view ../antoine_hiv/output_hiv.trans.bam | gawk '{if (and($2, 64) > 0) print $0}'| grep -f hybrid_single_read_ids_1.txt
     class_1_reads_1 = os.path.join(output_dir, "class_1_reads_first_in_pair.sam")
     class_1_reads_2 = os.path.join(output_dir,"class_1_reads_second_in_pair.sam")
     class_1_reads_all = os.path.join(output_dir,"class_1_reads.bam")
@@ -120,6 +119,18 @@ def get_reads(filename):
             id_to_read[read.query_name] = []
     return reads, id_to_read
 
+def get_cigar(read_id, id_to_reads, ref, start):
+    reads = id_to_reads[read_id]
+    cigars = []
+    for read in reads:
+        if read.reference_name == ref: # and read.reference_start >= int(start):
+            cigars.append(read.cigarstring)
+    if len(cigars) == 0:
+        cigars_str = "-"
+    else:
+        cigars_str = ",".join(cigars)
+    return cigars_str
+
 def get_umi(read_id, id_to_reads):
     # Assuming the umi is the same for both reads in the pair.
     reads = id_to_reads[read_id]
@@ -156,11 +167,13 @@ def extract_class_2_clusters(cluster_filename, id_to_reads):
             # First two characters are ##
             read_id = read_id[2:]
             umi = get_umi(read_id, id_to_reads)
+            cigar = get_cigar(read_id, id_to_reads, chrom, start)
             current_cluster.add_read_class_2(name=read_id,
                                             chrom=chrom,
                                             position=position,
                                             is_first_read=read_1,
-                                            umi=umi)
+                                            umi=umi,
+                                            cigar=cigar)
     return clusters
 
 def find_overlaps(class_1_reads, id_to_reads, clusters):
@@ -169,13 +182,14 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
         added_to_cluster = False
         for cluster in clusters:
             if read.reference_name == cluster.chrom and \
-                read.query_alignment_start >= cluster.start and \
-                read.query_alignment_start <= cluster.end:
+                read.reference_start >= cluster.start and \
+                read.reference_start <= cluster.end:
                 umi = get_umi(read.query_name, id_to_reads)
                 cluster.add_read_class_1(name=read.query_name,
                                          chrom=read.reference_name,
-                                         position=read.query_alignment_start,
-                                         umi=umi)
+                                         position=read.reference_start,
+                                         umi=umi,
+                                         cigar=cigar)
                 added_to_cluster = True
                 break
         if not added_to_cluster:
@@ -184,8 +198,7 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
     return clusters, unmerged_class_1_reads
 
 def get_read_string_in_cluster(read, read_class):
-    name, chrom, position, is_first_read, umi = read
-    cigar = "-"
+    name, chrom, position, is_first_read, umi, cigar = read
     return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\n".format(
             rclass=read_class,
             rid=name,
@@ -200,7 +213,7 @@ def get_read_string(read, id_to_reads, read_class):
             rclass=read_class,
             rid=read.query_name,
             chrom=read.reference_name,
-            position=read.query_alignment_start,
+            position=read.reference_start,
             is_first_read=read.is_read1,
             umi=get_umi(read.query_name, id_to_reads),
             cigar=read.cigarstring)
