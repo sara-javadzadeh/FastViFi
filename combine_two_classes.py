@@ -42,11 +42,11 @@ def parse_arguments():
                         type=str, required=True,
                         help="The output bam file generated after running the FastViFi pipeline. The filename is output_<virus>.fixed.trans.bam"
                         )
-    parser.add_argument("--input-bam",
-                        type=str, required=True,
-                        help="The input bam file where find_class_1_reads.py was called on. " + \
-                        "This is used to get the full read information from the output of find_class_1_reads.py."
-                        )
+    #parser.add_argument("--input-bam",
+    #                    type=str, required=True,
+    #                    help="The input bam file where find_class_1_reads.py was called on. " + \
+    #                    "This is used to get the full read information from the output of find_class_1_reads.py."
+    #                    )
     parser.add_argument("--output-dir",
                          type=str, required=True,
                          help="directory where all the output files are written into.")
@@ -120,6 +120,9 @@ def get_reads(filename):
     return reads, id_to_read
 
 def get_cigar(read_id, id_to_reads, ref, start):
+    # If read id is not in the mapping, return a dummy placeholder.
+    if read_id not in id_to_reads:
+        return "-"
     reads = id_to_reads[read_id]
     cigars = []
     for read in reads:
@@ -132,6 +135,8 @@ def get_cigar(read_id, id_to_reads, ref, start):
     return cigars_str
 
 def get_umi(read_id, id_to_reads):
+    # Do not retreive UMI for now.
+    return "-"
     # Assuming the umi is the same for both reads in the pair.
     reads = id_to_reads[read_id]
     umi = ""
@@ -239,6 +244,7 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
             out_file.write(get_read_string_in_cluster(read, "class_2"))
 
     out_file.write("############################### Remaining class 1 reads separated by read ids. Multiple alignment for each read might be present.\n")
+    out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\n")
     current_read = None
     for read in unmerged_class_1_reads:
         if current_read and current_read != read.query_name:
@@ -258,7 +264,7 @@ if __name__ == "__main__":
     logfile = open(log_filename, "wb+")
 
     # Extract a file with all read info from class 1
-    class_1_filename = extract_class_1_reads(input_bam=args.input_bam,
+    class_1_filename = extract_class_1_reads(input_bam=args.fastvifi_bam,
                                           class_1_read_ids_1=args.class_1_read_ids_1,
                                           class_1_read_ids_2=args.class_1_read_ids_2,
                                           logfile=logfile,
