@@ -116,7 +116,7 @@ def get_reads(filename):
         if read.query_name in id_to_read:
             id_to_read[read.query_name].append(read)
         else:
-            id_to_read[read.query_name] = []
+            id_to_read[read.query_name] = [read]
     return reads, id_to_read
 
 def get_cigar(read_id, id_to_reads, ref, start):
@@ -190,14 +190,23 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
                 read.reference_start >= cluster.start and \
                 read.reference_start <= cluster.end:
                 umi = get_umi(read.query_name, id_to_reads)
-                cluster.add_read_class_1(name=read.query_name,
+                if read.query_name not in id_to_reads:
+                    print("Warning: Not all alignments for class 1 reads in cluster are found")
+                    cluster.add_read_class_1(name=read.query_name,
                                          chrom=read.reference_name,
                                          position=read.reference_start,
                                          is_first_read=read.is_read1,
                                          umi=umi,
                                          cigar=read.cigarstring)
+                else:
+                    for read_c_1 in id_to_reads[read.query_name]:
+                        cluster.add_read_class_1(name=read_c_1.query_name,
+                                         chrom=read_c_1.reference_name,
+                                         position=read_c_1.reference_start,
+                                         is_first_read=read_c_1.is_read1,
+                                         umi=umi,
+                                         cigar=read_c_1.cigarstring)
                 added_to_cluster = True
-                break
         if not added_to_cluster:
             unmerged_class_1_reads.append(read)
 
@@ -227,6 +236,10 @@ def get_read_string(read, id_to_reads, read_class):
 def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
     clusters = sorted(clusters, key=lambda cluster: cluster.get_supporting_reads(), reverse=True)
     out_file = open(os.path.join(output_dir, "clusters_summary.txt"), "w+")
+    num_clusters_with_c1_and_c2 = 0
+    num_clusters_with_c2_no_c1 = 0
+    num_clusters = 0
+    num_unmerged_c1 = 0
     out_file.write("############################### Clusters where both/either class 1 and class 2 reads are present\n")
     out_file.write("#chrom\tstart\tend\tnum_class_1_reads\tnum_class_2_reads\n")
     # First write clusters where both class 1 and class 2 are present
@@ -243,6 +256,12 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
             out_file.write(get_read_string_in_cluster(read, "class_1"))
         for read in cluster.reads_class_2:
             out_file.write(get_read_string_in_cluster(read, "class_2"))
+        if len(cluster.reads_class_1) > 0:
+            num_clusters_with_c1_and_c2 += 1
+        else:
+            num_clusters_with_c2_no_c1 += 1
+        num_clusters += 1
+
 
     out_file.write("############################### Remaining class 1 reads separated by read ids. Multiple alignment for each read might be present.\n")
     out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\n")
@@ -250,8 +269,14 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
     for read in unmerged_class_1_reads:
         if current_read and current_read != read.query_name:
             out_file.write("\n")
+            num_unmerged_c1 += 1
         out_file.write(get_read_string(read, id_to_reads, "class_1"))
         current_read = read.query_name
+
+    print("Total {} clusters extracted".format(num_clusters))
+    print("Number of clusters with class 1 and class 2 reads: ", num_clusters_with_c1_and_c2)
+    print("Number of clusters with only class 2 reads (no class 1 reads): ", num_clusters_with_c2_no_c1)
+    print("Total {} unmerged class 1 reads".format(num_unmerged_c1))
 
     out_file.close()
 
