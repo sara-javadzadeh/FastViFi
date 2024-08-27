@@ -240,7 +240,7 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
                         ))
         out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\n")
         for read in cluster.reads_class_1:
-            out_file.write(get_read_string(read, "class_1"))
+            out_file.write(get_read_string_in_cluster(read, "class_1"))
         for read in cluster.reads_class_2:
             out_file.write(get_read_string_in_cluster(read, "class_2"))
 
