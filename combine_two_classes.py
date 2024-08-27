@@ -190,12 +190,12 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
                 read.reference_start >= cluster.start and \
                 read.reference_start <= cluster.end:
                 umi = get_umi(read.query_name, id_to_reads)
-                cigar = "-"
                 cluster.add_read_class_1(name=read.query_name,
                                          chrom=read.reference_name,
                                          position=read.reference_start,
+                                         is_first_read=read.is_read1,
                                          umi=umi,
-                                         cigar=cigar)
+                                         cigar=read.cigarstring)
                 added_to_cluster = True
                 break
         if not added_to_cluster:

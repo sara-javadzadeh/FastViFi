@@ -109,6 +109,8 @@ def call_fastvifi_pipeline(args):
         command += " --skip-kraken-filters "
     if args.skip_vifi:
         command += " --skip-vifi"
+    if args.skip_vifi_hmms:
+        command += " --skip-vifi-hmms "
     if args.mask_low_complexity is True:
         command += " --mask-low-complexity "
     if args.low_complexity_threshold is not None:
