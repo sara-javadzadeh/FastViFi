@@ -87,7 +87,7 @@ def extract_class_1_reads(input_bam, class_1_read_ids_1, class_1_read_ids_2, log
                     input_file=input_bam,
                     reads=class_1_reads_2,
                         ) + \
-                "awk -e '{if (and($2, 64) > 0) print $0}' | " + \
+                "awk -e '{if (and($2, 128) > 0) print $0}' | " + \
                 "grep -f {ids} >> {reads}".format(
                     input_file=input_bam,
                     ids=class_1_read_ids_2,
@@ -183,13 +183,16 @@ def extract_class_2_clusters(cluster_filename, id_to_reads):
 
 def find_overlaps(class_1_reads, id_to_reads, clusters):
     unmerged_class_1_reads = []
+    merged_class_1_reads = set()
     for read in class_1_reads:
         added_to_cluster = False
         for cluster in clusters:
             if read.reference_name == cluster.chrom and \
-                read.reference_start >= cluster.start and \
-                read.reference_start <= cluster.end:
+                    read.reference_start >= cluster.start and \
+                    read.reference_start <= cluster.end:
                 umi = get_umi(read.query_name, id_to_reads)
+                merged_class_1_reads.add(read.query_name)
+                added_to_cluster = True
                 if read.query_name not in id_to_reads:
                     print("Warning: Not all alignments for class 1 reads in cluster are found")
                     cluster.add_read_class_1(name=read.query_name,
@@ -206,11 +209,19 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
                                          is_first_read=read_c_1.is_read1,
                                          umi=umi,
                                          cigar=read_c_1.cigarstring)
-                added_to_cluster = True
+                break
         if not added_to_cluster:
             unmerged_class_1_reads.append(read)
+    # Remove read from unmerged class 1 reads that appear in merged_class_1_reads
+    # This could happen if the first alignment does not belong to any cluster, but
+    # consequent alignments do. In which case, all alignments (including the first)
+    # will be added to merged_class_1_reads.
+    unmerged_class_1_reads_clean = []
+    for read in unmerged_class_1_reads:
+        if read.query_name not in merged_class_1_reads:
+            unmerged_class_1_reads_clean.append(read)
 
-    return clusters, unmerged_class_1_reads
+    return clusters, unmerged_class_1_reads_clean
 
 def get_read_string_in_cluster(read, read_class):
     name, chrom, position, is_first_read, umi, cigar = read
