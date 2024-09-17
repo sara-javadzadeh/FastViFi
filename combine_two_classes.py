@@ -1,7 +1,15 @@
 import os
 import argparse
+from collections import defaultdict
 import subprocess
 import pysam
+
+class Class1Read:
+    def __init__(self, aligned_read, alignment_score, map_rate_viral, map_rate_human):
+        self.aligned_read = aligned_read
+        self.alignment_score = alignment_score
+        self.map_rate_viral = map_rate_viral
+        self.map_rate_human = map_rate_human
 
 class Cluster:
     def __init__(self, chrom, start, end):
@@ -11,11 +19,15 @@ class Cluster:
         self.reads_class_1 = []
         self.reads_class_2 = []
 
-    def add_read_class_1(self, name, chrom, position, is_first_read, umi, cigar):
-        self.reads_class_1.append((name, chrom, int(position), is_first_read, umi, cigar))
+    def add_read_class_1(self, name, chrom, position, is_first_read, umi, cigar,
+                         alignment_score, map_rate_viral, map_rate_human):
+        self.reads_class_1.append((name, chrom, int(position), is_first_read,
+                                    umi, cigar, alignment_score,
+                                    map_rate_viral, map_rate_human))
 
     def add_read_class_2(self, name, chrom, position, is_first_read, umi, cigar):
-        self.reads_class_2.append((name, chrom, int(position), is_first_read, umi, cigar))
+        self.reads_class_2.append((name, chrom, int(position), is_first_read,
+                                    umi, cigar, "-", "-", "-"))
 
     def get_supporting_reads(self):
         return len(self.reads_class_1) + len(self.reads_class_2)
@@ -42,15 +54,25 @@ def parse_arguments():
                         type=str, required=True,
                         help="The output bam file generated after running the FastViFi pipeline. The filename is output_<virus>.fixed.trans.bam"
                         )
-    #parser.add_argument("--input-bam",
-    #                    type=str, required=True,
-    #                    help="The input bam file where find_class_1_reads.py was called on. " + \
-    #                    "This is used to get the full read information from the output of find_class_1_reads.py."
-    #                    )
     parser.add_argument("--output-dir",
                          type=str, required=True,
                          help="directory where all the output files are written into.")
+    parser.add_argument("--map-rate-human",
+                        type=float, required=False, default=0,
+                        help="The fraction of bases mapped to the human genome for class 1 reads " + \
+                        "based on the cigar string. Assumes human references start with 'chr'. " + \
+                        "Should be between 0 and 1. Default 0.")
+    parser.add_argument("--map-rate-viral",
+                        type=float, required=False, default=0,
+                        help="The fraction of bases mapped to the viral genome for class 1 reads " + \
+                        "based on the cigar string. Should be between 0 and 1. Default 0.")
+    parser.add_argument("--alignment-score",
+                        type=int, required=False, default=0,
+                        help="A threshold on the alignment score provided by the aligner tool (if present). Default 0.")
     args = parser.parse_args()
+    if args.map_rate_human + args.map_rate_viral > 1:
+        print("Error: --map-rate-human and --map-rate-viral should sum up to a value smaller than or equal to 1.")
+        exit(1)
     return args
 
 def combine_bam_files(class_1_filename, class_2_filename, output_dir):
@@ -184,7 +206,8 @@ def extract_class_2_clusters(cluster_filename, id_to_reads):
 def find_overlaps(class_1_reads, id_to_reads, clusters):
     unmerged_class_1_reads = []
     merged_class_1_reads = set()
-    for read in class_1_reads:
+    for read_obj in class_1_reads:
+        read = read_obj.aligned_read
         added_to_cluster = False
         for cluster in clusters:
             if read.reference_name == cluster.chrom and \
@@ -194,57 +217,76 @@ def find_overlaps(class_1_reads, id_to_reads, clusters):
                 merged_class_1_reads.add(read.query_name)
                 added_to_cluster = True
                 if read.query_name not in id_to_reads:
-                    print("Warning: Not all alignments for class 1 reads in cluster are found")
+                    #print("Warning: Not all alignments for class 1 reads in cluster are found")
                     cluster.add_read_class_1(name=read.query_name,
                                          chrom=read.reference_name,
                                          position=read.reference_start,
                                          is_first_read=read.is_read1,
                                          umi=umi,
-                                         cigar=read.cigarstring)
+                                         cigar=read.cigarstring,
+                                         alignment_score=read_obj.alignment_score,
+                                         map_rate_viral=read_obj.map_rate_viral,
+                                         map_rate_human=read_obj.map_rate_human,
+                                         )
                 else:
-                    for read_c_1 in id_to_reads[read.query_name]:
+                    for read_c_1_obj in id_to_reads[read.query_name]:
+                        read_c_1 = read_c_1_obj.aligned_read
                         cluster.add_read_class_1(name=read_c_1.query_name,
                                          chrom=read_c_1.reference_name,
                                          position=read_c_1.reference_start,
                                          is_first_read=read_c_1.is_read1,
                                          umi=umi,
-                                         cigar=read_c_1.cigarstring)
+                                         cigar=read_c_1.cigarstring,
+                                         alignment_score=read_obj.alignment_score,
+                                         map_rate_viral=read_obj.map_rate_viral,
+                                         map_rate_human=read_obj.map_rate_human,
+                                         )
                 break
         if not added_to_cluster:
-            unmerged_class_1_reads.append(read)
+            unmerged_class_1_reads.append(read_obj)
     # Remove read from unmerged class 1 reads that appear in merged_class_1_reads
     # This could happen if the first alignment does not belong to any cluster, but
     # consequent alignments do. In which case, all alignments (including the first)
     # will be added to merged_class_1_reads.
     unmerged_class_1_reads_clean = []
-    for read in unmerged_class_1_reads:
+    for read_obj in unmerged_class_1_reads:
+        read = read_obj.aligned_read
         if read.query_name not in merged_class_1_reads:
-            unmerged_class_1_reads_clean.append(read)
+            unmerged_class_1_reads_clean.append(read_obj)
 
     return clusters, unmerged_class_1_reads_clean
 
 def get_read_string_in_cluster(read, read_class):
-    name, chrom, position, is_first_read, umi, cigar = read
-    return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\n".format(
+    name, chrom, position, is_first_read, umi, cigar, alignment_score, map_rate_viral, map_rate_human = read
+    return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\t{aln}\t{viral_rate}\t{human_rate}\n".format(
             rclass=read_class,
             rid=name,
             chrom=chrom,
             position=position,
             is_first_read=is_first_read,
             umi=umi,
-            cigar=cigar)
+            cigar=cigar,
+            aln=alignment_score,
+            viral_rate=map_rate_viral,
+            human_rate=map_rate_human,
+            )
 
-def get_read_string(read, id_to_reads, read_class):
-    return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\n".format(
+def get_read_string(read_obj, read_class):
+    read = read_obj.aligned_read
+    return "{rclass}\t{rid}\t{chrom}\t{position}\t{is_first_read}\t{umi}\t{cigar}\t{aln}\t{viral_rate}\t{human_rate}\n".format(
             rclass=read_class,
             rid=read.query_name,
             chrom=read.reference_name,
             position=read.reference_start,
             is_first_read=read.is_read1,
-            umi=get_umi(read.query_name, id_to_reads),
-            cigar=read.cigarstring)
+            umi="-",
+            cigar=read.cigarstring,
+            aln=read_obj.alignment_score,
+            viral_rate=read_obj.map_rate_viral,
+            human_rate=read_obj.map_rate_human,
+            )
 
-def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
+def write_results(clusters, unmerged_class_1_reads, output_dir):
     clusters = sorted(clusters, key=lambda cluster: cluster.get_supporting_reads(), reverse=True)
     out_file = open(os.path.join(output_dir, "clusters_summary.txt"), "w+")
     num_clusters_with_c1_and_c2 = 0
@@ -262,7 +304,8 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
                         num_c_1=len(cluster.reads_class_1),
                         num_c_2=len(cluster.reads_class_2),
                         ))
-        out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\n")
+        out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\t"+ \
+                        "alignment_score(%)\tmap_rate_viral(%)\tmap_reate_human(%)\n")
         for read in cluster.reads_class_1:
             out_file.write(get_read_string_in_cluster(read, "class_1"))
         for read in cluster.reads_class_2:
@@ -275,13 +318,15 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
 
 
     out_file.write("############################### Remaining class 1 reads separated by read ids. Multiple alignment for each read might be present.\n")
-    out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string\n")
+    out_file.write("#read_class\tread_id\tchr\tposition\tis_read_1\tUMI\tCIGAR_string " +\
+                        "alignment_score(%)\tmap_rate_viral(%)\tmap_reate_human(%)\n")
     current_read = None
-    for read in unmerged_class_1_reads:
+    for read_obj in unmerged_class_1_reads:
+        read = read_obj.aligned_read
         if current_read and current_read != read.query_name:
             out_file.write("\n")
             num_unmerged_c1 += 1
-        out_file.write(get_read_string(read, id_to_reads, "class_1"))
+        out_file.write(get_read_string(read_obj, "class_1"))
         current_read = read.query_name
 
     print("Total {} clusters extracted".format(num_clusters))
@@ -290,6 +335,61 @@ def write_results(clusters, unmerged_class_1_reads, id_to_reads, output_dir):
     print("Total {} unmerged class 1 reads".format(num_unmerged_c1))
 
     out_file.close()
+
+def filter_class_1_reads(reads, id_to_read, alignment_score, map_rate_human, map_rate_viral):
+    filtered_reads = []
+    filtered_read_map = defaultdict(list)
+    has_viral = defaultdict(bool)
+    has_human = defaultdict(bool)
+    for read in reads:
+        read_tag, read_map_rate_viral, read_map_rate_human = "-", "-", "-"
+        try:
+            read_tag = read.get_tag("AS")
+        except KeyError:
+            if alignment_score > 0:
+                print("Error: --alignment-score is indicated, but AS tag is not present in the bam file." + \
+                        " Use cigar string based filters --map-rate-human and --map-rate-viral instead.")
+                exit(1)
+            read_tag = "-"
+        cigar_tuples = read.cigartuples
+        bases_matched, total_bases = 0, 0
+        for cigar_tuple in cigar_tuples:
+            valid_ops = [0, 7]
+            total_bases += cigar_tuple[1]
+            if cigar_tuple[0] in valid_ops:
+                bases_matched += cigar_tuple[1]
+        map_fraction = float(bases_matched)/total_bases
+        if read_tag < alignment_score:
+            # Does not pass alignment filter
+            continue
+        if read.reference_name.lower().startswith("chr") and map_fraction < map_rate_human:
+                # Does not pass human map rate
+                continue
+        if (not read.reference_name.lower().startswith("chr")) and map_fraction < map_rate_viral:
+                # Does not pass viral map rate
+                continue
+
+        if read.reference_name.lower().startswith("chr"):
+            read_map_rate_human = int(map_fraction * 100)
+            has_human[read.query_name] = True
+        else:
+            read_map_rate_viral = int(map_fraction * 100)
+            has_viral[read.query_name] = True
+        read_obj = Class1Read(aligned_read=read,
+                                        alignment_score=read_tag,
+                                        map_rate_human=read_map_rate_human,
+                                        map_rate_viral=read_map_rate_viral)
+        filtered_reads.append(read_obj)
+
+    filtered_hybrid_reads = []
+    for read_obj in filtered_reads:
+        name = read_obj.aligned_read.query_name
+        if name in has_human and name in has_viral:
+            filtered_hybrid_reads.append(read_obj)
+            filtered_read_map[read.query_name].append(read_obj)
+
+    return filtered_hybrid_reads, filtered_read_map
+
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -308,11 +408,17 @@ if __name__ == "__main__":
                                           output_dir=args.output_dir)
     # Extract actual reads
     class_1_reads, id_to_read_1 = get_reads(class_1_filename)
-    class_1_reads = sorted(class_1_reads, key=lambda x: (x.query_name, x.reference_name))
+    class_1_reads, id_to_read_1 = filter_class_1_reads(
+                         id_to_read = id_to_read_1,
+                         reads = class_1_reads,
+                         alignment_score = args.alignment_score,
+                         map_rate_human = args.map_rate_human,
+                         map_rate_viral = args.map_rate_viral)
+    class_1_reads = sorted(class_1_reads, key=lambda x: (x.aligned_read.query_name, x.aligned_read.reference_name))
     class_2_reads, id_to_read_2 = get_reads(args.fastvifi_bam)
-    all_reads = class_1_reads + class_2_reads
-    id_to_reads = id_to_read_1.copy()
-    id_to_reads.update(id_to_read_2)
+    #all_reads = class_1_reads + class_2_reads
+    #id_to_reads = id_to_read_1.copy()
+    #id_to_reads.update(id_to_read_2)
 
     # Read clusters from file
     clusters = extract_class_2_clusters(args.fastvifi_cluster, id_to_read_2)
@@ -334,5 +440,4 @@ if __name__ == "__main__":
     # Write a summary of the results.
     write_results(clusters=clusters,
                 unmerged_class_1_reads=unmerged_class_1_reads,
-                id_to_reads=id_to_reads,
                 output_dir=args.output_dir)
