@@ -91,7 +91,7 @@ def call_fastvifi_pipeline(args):
         command += " --skip-bwa-filter "
     if args.threads is not None:
         command += " --threads {}".format(args.threads)
-    if args.skip_kraken_filters is not None:
+    if args.skip_kraken_filters:
         command += " --skip-kraken-filters"
 
     print(command)
