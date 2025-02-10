@@ -92,31 +92,47 @@ def extract_class_1_reads(input_bam, class_1_read_ids_1, class_1_read_ids_2, log
     class_1_reads_all = os.path.join(output_dir,"class_1_reads.bam")
 
     # Extract the reads from read ids
-    command = "samtools view -H {input_file} > {reads}; samtools view {input_file} | ".format(
+    logfile.write(b"Extracting class 1 reads (first in pair) from the input bam\n")
+    command = "samtools view -H {input_file} > {reads}".format(
+                        input_file=input_bam,
+                        reads=class_1_reads_1)
+    shell_output = subprocess.check_output(command, shell=True)
+    logfile.write(shell_output)
+    try:
+        command = "samtools view {input_file} | ".format(
                     input_file=input_bam,
-                    reads=class_1_reads_1,
                         ) + \
                 "awk -e '{if (and($2, 64) > 0) print $0}' | " + \
                 "grep -f {ids} >> {reads}".format(
                     ids=class_1_read_ids_1,
                     reads=class_1_reads_1)
-    shell_output = subprocess.check_output(command, shell=True)
-    logfile.write(b"Extracting class 1 reads (first in pair) from the input bam\n")
-    logfile.write(shell_output)
+        shell_output = subprocess.check_output(command, shell=True)
+        logfile.write(shell_output)
+    except subprocess.CalledProcessError as e:
+        logfile.write("Error in running the command {} ".format(command).encode())
+        logfile.write(e.output)
 
     # Repeat for class 1 reads that are second in pair
-    command = "samtools view -H {input_file} > {reads}; samtools view {input_file} | ".format(
+    logfile.write(b"Extracting class 1 reads (second in pair) from the input bam\n")
+    command = "samtools view -H {input_file} > {reads}".format(
                     input_file=input_bam,
-                    reads=class_1_reads_2,
+                    reads=class_1_reads_2)
+    shell_output = subprocess.check_output(command, shell=True)
+    logfile.write(shell_output)
+    try:
+        command = "samtools view {input_file} | ".format(
+                    input_file=input_bam,
                         ) + \
                 "awk -e '{if (and($2, 128) > 0) print $0}' | " + \
                 "grep -f {ids} >> {reads}".format(
                     input_file=input_bam,
                     ids=class_1_read_ids_2,
                     reads=class_1_reads_2)
-    shell_output = subprocess.check_output(command, shell=True)
-    logfile.write(b"Extracting class 1 reads (second in pair) from the input bam\n")
-    logfile.write(shell_output)
+        shell_output = subprocess.check_output(command, shell=True)
+        logfile.write(shell_output)
+    except subprocess.CalledProcessError as e:
+        logfile.write("Error in running the command: {}".format(command).encode())
+        logfile.write(e.output)
 
     # Combine the two files into one
     command = "samtools merge -f -O BAM {combined} {input_1} {input_2}".format(
